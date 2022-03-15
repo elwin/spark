@@ -1231,6 +1231,7 @@ private[spark] class DAGScheduler(
 
     val job = new ActiveJob(jobId, finalStage, callSite, listener, properties)
     clearCacheLocs()
+    logInfo("Hello from elwin xxx")
     logInfo("Got job %s (%s) with %d output partitions".format(
       job.jobId, callSite.shortForm, partitions.length))
     logInfo("Final stage: " + finalStage + " (" + finalStage.name + ")")
