@@ -19,6 +19,8 @@
 # echo commands to the terminal output
 set -ex
 
+echo "xxx entrypoint" | logger -n "${LOGGER_HOST}" -P 3066 -T --tag "${TEST_NAME}"
+
 # Check whether there is a passwd entry for the container UID
 myuid=$(id -u)
 mygid=$(id -g)
