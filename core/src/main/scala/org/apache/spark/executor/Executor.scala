@@ -544,6 +544,11 @@ private[spark] class Executor(
           threadMXBean.getCurrentThreadCpuTime
         } else 0L
 
+        logInfo(
+          s"""elw3: {"type": "job_duration", "task_id": "$taskId",
+             | "duration": ${taskFinishNs - taskStartTimeNs}""".stripMargin
+        )
+
         // If the task has been killed, let's fail it.
         task.context.killTaskIfInterrupted()
 
