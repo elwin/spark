@@ -16,5 +16,5 @@ cp resource-managers/kubernetes/docker/src/main/dockerfiles/spark/entrypoint.sh 
 
 
 IMAGE_NAME="${REPO}:${TAG}"
-docker build -f elwin/Dockerfile -t "${IMAGE_NAME}" elwin
+#docker build -f elwin/Dockerfile -t "${IMAGE_NAME}" elwin
 docker push "${IMAGE_NAME}"

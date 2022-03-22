@@ -303,6 +303,7 @@ private[spark] class Executor(
    * Function to kill the running tasks in an executor.
    * This can be called by executor back-ends to kill the
    * tasks instead of taking the JVM down.
+   *
    * @param interruptThread whether to interrupt the task thread
    */
   def killAllTasks(interruptThread: Boolean, reason: String) : Unit = {
@@ -542,6 +543,11 @@ private[spark] class Executor(
         val taskFinishCpu = if (threadMXBean.isCurrentThreadCpuTimeSupported) {
           threadMXBean.getCurrentThreadCpuTime
         } else 0L
+
+        logInfo(
+          s"""elw3: {"type": "job_duration", "task_id": "$taskId",
+             | "duration": ${taskFinishNs - taskStartTimeNs}""".stripMargin
+        )
 
         // If the task has been killed, let's fail it.
         task.context.killTaskIfInterrupted()
