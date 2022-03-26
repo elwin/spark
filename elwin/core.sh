@@ -5,7 +5,7 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
-REPO=us.icr.io/elwin/spark
+REPO=ghcr.io/elwin/spark
 TAG=$1
 
 ./build/mvn -DskipTests -pl :spark-core_2.12 clean package
