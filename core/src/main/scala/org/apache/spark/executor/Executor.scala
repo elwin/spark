@@ -439,6 +439,8 @@ private[spark] class Executor(
     }
 
     override def run(): Unit = {
+      var initStartTime = System.nanoTime()
+
       setMDCForTask(taskName, mdcProperties)
       threadId = Thread.currentThread.getId
       Thread.currentThread.setName(threadName)
@@ -546,6 +548,10 @@ private[spark] class Executor(
 
         logInfo(
           s"""elw3: {"type": "job_duration", "task_id": "$taskId", "duration": ${taskFinishNs - taskStartTimeNs}}"""
+        )
+
+        logInfo(
+          s"""elw3: {"type": "initialization", "task_id": "$taskId", "duration": ${taskStartTimeNs - initStartTime}}"""
         )
 
         // If the task has been killed, let's fail it.
