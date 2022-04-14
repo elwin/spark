@@ -547,11 +547,11 @@ private[spark] class Executor(
         } else 0L
 
         logInfo(
-          s"""elw3: {"type": "job_duration", "task_id": "$taskId", "duration": ${taskFinishNs - taskStartTimeNs}}"""
+          s"""elw3: {"type": "job_duration", "task_id": $taskId, "duration": ${taskFinishNs - taskStartTimeNs}, "timestamp": ${System.nanoTime}}"""
         )
 
         logInfo(
-          s"""elw3: {"type": "initialization", "task_id": "$taskId", "duration": ${taskStartTimeNs - initStartTime}}"""
+          s"""elw3: {"type": "initialization", "task_id": $taskId, "duration": ${taskStartTimeNs - initStartTime}, "timestamp": ${System.nanoTime}}"""
         )
 
         // If the task has been killed, let's fail it.
