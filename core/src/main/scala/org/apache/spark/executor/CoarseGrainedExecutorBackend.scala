@@ -262,7 +262,7 @@ private[spark] class CoarseGrainedExecutorBackend(
 
   override def statusUpdate(taskId: Long, state: TaskState, data: ByteBuffer): Unit = {
     logInfo(
-      s"""elw3: {"type": "status_update", "task_id": "$taskId", "state": "$state", "timestamp": ${System.nanoTime()}}"""
+      s"""elw3: {"type": "status_update", "task_id": $taskId, "state": "$state", "timestamp": ${System.nanoTime()}}"""
     )
     val resources = taskResources.getOrElse(taskId, Map.empty[String, ResourceInformation])
     val msg = StatusUpdate(executorId, taskId, state, data, resources)
