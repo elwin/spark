@@ -439,7 +439,7 @@ private[spark] class Executor(
     }
 
     override def run(): Unit = {
-      var initStartTime = System.nanoTime()
+      val initStartTime = System.nanoTime()
 
       setMDCForTask(taskName, mdcProperties)
       threadId = Thread.currentThread.getId
@@ -471,6 +471,10 @@ private[spark] class Executor(
         task.localProperties = taskDescription.properties
         task.setTaskMemoryManager(taskMemoryManager)
 
+        logInfo(
+          s"""elw3: {"type": "task_size", "task_id": $taskId, "size": ${taskDescription.serializedTask.position()}, "timestamp": ${System.nanoTime}}"""
+        )
+
         // If this task has been killed before we deserialized it, let's quit now. Otherwise,
         // continue executing the task.
         val killReason = reasonIfKilled
@@ -493,6 +497,7 @@ private[spark] class Executor(
 
         metricsPoller.onTaskStart(taskId, task.stageId, task.stageAttemptId)
         taskStarted = true
+
 
         // Run the actual task and measure its runtime.
         taskStartTimeNs = System.nanoTime()
