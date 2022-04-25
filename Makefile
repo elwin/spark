@@ -8,3 +8,5 @@ start-cluster:
 stop-cluster:
 	./dist/sbin/stop-worker.sh
 	./dist/sbin/stop-master.sh
+
+restart-cluster: stop-cluster start-cluster

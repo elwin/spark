@@ -56,6 +56,10 @@ private[spark] object CoarseGrainedClusterMessages {
     extends CoarseGrainedClusterMessage
 
   // Executors to driver
+  case object RequestTaskQueue extends CoarseGrainedClusterMessage
+
+  case class RequestTask(executorId: String, taskQueue: Int) extends CoarseGrainedClusterMessage
+
   case class RegisterExecutor(
       executorId: String,
       executorRef: RpcEndpointRef,
