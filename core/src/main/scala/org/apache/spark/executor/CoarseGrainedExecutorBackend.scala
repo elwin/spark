@@ -22,16 +22,13 @@ import java.nio.ByteBuffer
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.Date
-
 import scala.collection.mutable
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
-
 import io.netty.util.internal.PlatformDependent
 import org.json4s.DefaultFormats
-
 import org.apache.spark._
-import org.apache.spark.TaskState.TaskState
+import org.apache.spark.TaskState.{TaskState, isFinished}
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.deploy.worker.WorkerWatcher
 import org.apache.spark.internal.Logging
@@ -95,6 +92,7 @@ private[spark] class CoarseGrainedExecutorBackend(
     }
 
     logInfo("Connecting to driver: " + driverUrl)
+
     try {
       if (PlatformDependent.directBufferPreferred() &&
         PlatformDependent.maxDirectMemory() < env.conf.get(MAX_REMOTE_BLOCK_SIZE_FETCH_TO_MEM)) {
@@ -176,6 +174,10 @@ private[spark] class CoarseGrainedExecutorBackend(
       } catch {
         case NonFatal(e) =>
           exitExecutor(1, "Unable to create executor due to " + e.getMessage, e)
+      }
+      driver match {
+        case Some(driverRef) => driverRef.send(RequestTaskQueue)
+        case None => logWarning(s"Drop xxx because has not yet connected to driver")
       }
 
     case LaunchTask(data) =>
@@ -270,6 +272,15 @@ private[spark] class CoarseGrainedExecutorBackend(
     if (TaskState.isFinished(state)) {
       taskResources.remove(taskId)
     }
+
+    if (isFinished(state)) {
+      val xx = RequestTask(executorId, 0)
+      driver match {
+        case Some(driverRef) => driverRef.send(xx)
+        case None => logWarning(s"Drop $xx because has not yet connected to driver")
+      }
+    }
+
     driver match {
       case Some(driverRef) => driverRef.send(msg)
       case None => logWarning(s"Drop $msg because has not yet connected to driver")

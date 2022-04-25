@@ -145,6 +145,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     override def receive: PartialFunction[Any, Unit] = {
+      case RequestTaskQueue => ()
+
+      case RequestTask(executorId, taskQueue) => makeOffers(executorId)
+
       case StatusUpdate(executorId, taskId, state, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
         if (TaskState.isFinished(state)) {
@@ -168,7 +172,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         }
 
       case ReviveOffers =>
-        makeOffers()
+//        makeOffers()
 
       case KillTask(taskId, executorId, interruptThread, reason) =>
         executorDataMap.get(executorId) match {
