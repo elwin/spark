@@ -492,6 +492,26 @@ private[spark] class TaskSchedulerImpl(
     }
   }
 
+//  def nextOffer(): TaskDescription = synchronized {
+//    for (taskSet <- rootPool.getSortedTaskSetQueue) {
+//
+//      val taskDesc = taskSet.prepareLaunchingTask(
+//        task.execId,
+//        task.host,
+//        task.index,
+//        task.taskLocality,
+//        false,
+//        task.assignedResources,
+//        launchTime)
+//      addRunningTask(taskDesc.taskId, taskDesc.executorId, taskSet)
+//      tasks(task.assignedOfferIndex) += taskDesc
+//      shuffledOffers(task.assignedOfferIndex).address.get -> taskDesc
+//
+//    }
+//    // TODO
+//    return null
+//  }
+
   /**
    * Called by cluster manager to offer resources on workers. We respond by asking our active task
    * sets for tasks in order of priority. We fill each node with tasks in a round-robin manner so
