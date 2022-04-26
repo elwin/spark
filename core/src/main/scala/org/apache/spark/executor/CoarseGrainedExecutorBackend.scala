@@ -28,7 +28,7 @@ import scala.util.control.NonFatal
 import io.netty.util.internal.PlatformDependent
 import org.json4s.DefaultFormats
 import org.apache.spark._
-import org.apache.spark.TaskState.{TaskState, isFinished}
+import org.apache.spark.TaskState.TaskState
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.deploy.worker.WorkerWatcher
 import org.apache.spark.internal.Logging
@@ -271,10 +271,9 @@ private[spark] class CoarseGrainedExecutorBackend(
     logInfo(s"""xxx: ${msg.state}""")
     if (TaskState.isFinished(state)) {
       taskResources.remove(taskId)
-    }
 
-    if (isFinished(state)) {
       val xx = RequestTask(executorId, 0)
+      logInfo("xxx sending request it")
       driver match {
         case Some(driverRef) => driverRef.send(xx)
         case None => logWarning(s"Drop $xx because has not yet connected to driver")
