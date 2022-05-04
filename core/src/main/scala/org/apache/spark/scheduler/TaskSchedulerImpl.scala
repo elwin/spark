@@ -493,14 +493,24 @@ private[spark] class TaskSchedulerImpl(
     }
   }
 
-  def nextOffer(workerOffer: WorkerOffer): Option[TaskDescription] = synchronized {
+  def nextOffer(offer: WorkerOffer): Option[TaskDescription] = synchronized {
+    if (!hostToExecutors.contains(offer.host)) {
+      hostToExecutors(offer.host) = new mutable.HashSet[String]()
+    }
+    if (!executorIdToRunningTaskIds.contains(offer.executorId)) {
+      hostToExecutors(offer.host) += offer.executorId
+      executorAdded(offer.executorId, offer.host)
+      executorIdToHost(offer.executorId) = offer.host
+      executorIdToRunningTaskIds(offer.executorId) = mutable.HashSet[Long]()
+    }
+
     for (taskSet <- rootPool.getSortedTaskSetQueue) {
 
       val taskResourceAssignments = mutable.HashMap[String, ResourceInformation]().toMap
 
       val (taskDesc, rejected, _) = taskSet.resourceOffer(
-        execId = workerOffer.executorId,
-        host = workerOffer.host,
+        execId = offer.executorId,
+        host = offer.host,
         maxLocality = TaskLocality.ANY,
         taskResourceAssignments = taskResourceAssignments,
       )
