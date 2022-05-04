@@ -269,6 +269,13 @@ private[spark] class CoarseGrainedExecutorBackend(
     val resources = taskResources.getOrElse(taskId, Map.empty[String, ResourceInformation])
     val msg = StatusUpdate(executorId, taskId, state, data, resources)
     logInfo(s"""xxx: ${msg.state}""")
+
+    driver match {
+      case Some(driverRef) => driverRef.send(msg)
+      case None => logWarning(s"Drop $msg because has not yet connected to driver")
+    }
+
+    // TODO: Move to callee
     if (TaskState.isFinished(state)) {
       taskResources.remove(taskId)
 
@@ -278,11 +285,6 @@ private[spark] class CoarseGrainedExecutorBackend(
         case Some(driverRef) => driverRef.send(xx)
         case None => logWarning(s"Drop $xx because has not yet connected to driver")
       }
-    }
-
-    driver match {
-      case Some(driverRef) => driverRef.send(msg)
-      case None => logWarning(s"Drop $msg because has not yet connected to driver")
     }
   }
 

@@ -163,7 +163,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   r.release(v.addresses)
                 }
               }
-              makeOffers(executorId)
+//              makeOffers(executorId)
             case None =>
               // Ignoring the update since we don't know about the executor.
               logWarning(s"Ignored task status update ($taskId state $state) " +
@@ -317,29 +317,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         logError(s"Received unexpected ask ${e}")
     }
 
-    // Make fake resource offers on all executors
-    private def makeOffers(): Unit = {
-
-      // Make sure no executor is killed while some task is launching on it
-      val taskDescs = withLock {
-        // Filter out executors under killing
-        val activeExecutors = executorDataMap.filterKeys(isExecutorActive)
-        val workOffers = activeExecutors.map {
-          case (id, executorData) =>
-            new WorkerOffer(id, executorData.executorHost, executorData.freeCores,
-              Some(executorData.executorAddress.hostPort),
-              executorData.resourcesInfo.map { case (rName, rInfo) =>
-                (rName, rInfo.availableAddrs.toBuffer)
-              }, executorData.resourceProfileId)
-        }.toIndexedSeq
-
-        scheduler.resourceOffers(workOffers, true)
-      }
-      if (taskDescs.nonEmpty) {
-        launchTasks(taskDescs)
-      }
-    }
-
     override def onDisconnected(remoteAddress: RpcAddress): Unit = {
       addressToExecutorId
         .get(remoteAddress)
@@ -349,29 +326,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             "messages.")))
     }
 
-    // Make fake resource offers on just one executor
-    private def makeOffers(executorId: String): Unit = {
-      // Make sure no executor is killed while some task is launching on it
-      val taskDescs = withLock {
-        // Filter out executors under killing
-        if (isExecutorActive(executorId)) {
-          val executorData = executorDataMap(executorId)
-          val workOffers = IndexedSeq(
-            new WorkerOffer(executorId, executorData.executorHost, executorData.freeCores,
-              Some(executorData.executorAddress.hostPort),
-              executorData.resourcesInfo.map { case (rName, rInfo) =>
-                (rName, rInfo.availableAddrs.toBuffer)
-              }, executorData.resourceProfileId))
-          scheduler.resourceOffers(workOffers, false)
-        } else {
-          Seq.empty
-        }
-      }
-      if (taskDescs.nonEmpty) {
-        launchTasks(taskDescs)
-      }
-    }
 
+    // Make fake resource offers on just one executor
     private def makeOffers(executorId: String, taskQueue: Int): Unit = {
       withLock {
         if (!isExecutorActive(executorId)) return
@@ -386,8 +342,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             (rName, rInfo.availableAddrs.toBuffer)
           }, resourceProfileId = executorData.resourceProfileId
         )
-        val taskDescs = scheduler.resourceOffers(IndexedSeq(offer))
-        if (taskDescs.nonEmpty) launchTasks(taskDescs)
+
+        val taskDesc = scheduler.nextOffer(offer)
+        if (taskDesc.isDefined) {
+          launchTask(taskDesc.get)
+        }
+//        val taskDescs = scheduler.resourceOffers(IndexedSeq(offer))
+//        if (taskDescs.nonEmpty) launchTasks(taskDescs)
       }
     }
 
