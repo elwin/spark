@@ -1,5 +1,8 @@
 build-core:
-	./elwin/core.sh latest
+	./elwin/core.sh
+
+docker:
+	./elwin/docker.sh latest
 
 start-cluster:
 	./dist/sbin/start-master.sh
