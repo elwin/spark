@@ -43,6 +43,8 @@ private[spark] object CoarseGrainedClusterMessages {
   // Driver to executors
   case class LaunchTask(data: SerializableBuffer) extends CoarseGrainedClusterMessage
 
+  case class SetTaskQueue(taskQueue: Option[String]) extends CoarseGrainedClusterMessage
+
   case class KillTask(taskId: Long, executor: String, interruptThread: Boolean, reason: String)
     extends CoarseGrainedClusterMessage
 
@@ -56,9 +58,9 @@ private[spark] object CoarseGrainedClusterMessages {
     extends CoarseGrainedClusterMessage
 
   // Executors to driver
-  case object RequestTaskQueue extends CoarseGrainedClusterMessage
+  case class RequestTaskQueue(executorId: String) extends CoarseGrainedClusterMessage
 
-  case class RequestTask(executorId: String, taskQueue: Int) extends CoarseGrainedClusterMessage
+  case class RequestTask(executorId: String, taskQueue: String) extends CoarseGrainedClusterMessage
 
   case class RegisterExecutor(
       executorId: String,

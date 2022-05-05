@@ -145,9 +145,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     override def receive: PartialFunction[Any, Unit] = {
-      case RequestTaskQueue => ()
+      case RequestTaskQueue(executorId) => makeQueue(executorId)
 
-      case RequestTask(executorId, taskQueue) => makeOffers(executorId, 0)
+      case RequestTask(executorId, taskQueue) => makeOffers(executorId, taskQueue)
 
       case StatusUpdate(executorId, taskId, state, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
@@ -163,7 +163,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   r.release(v.addresses)
                 }
               }
-//              makeOffers(executorId)
+            //              makeOffers(executorId)
             case None =>
               // Ignoring the update since we don't know about the executor.
               logWarning(s"Ignored task status update ($taskId state $state) " +
@@ -172,7 +172,11 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         }
 
       case ReviveOffers =>
-      //        makeOffers()
+        for ((executorId, executor) <- executorDataMap) {
+          if (!executor.assignedQueue) {
+            makeQueue(executorId)
+          }
+        }
 
       case KillTask(taskId, executorId, interruptThread, reason) =>
         executorDataMap.get(executorId) match {
@@ -216,7 +220,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         executorDataMap.get(executorId).foreach { data =>
           data.freeCores = data.totalCores
         }
-        makeOffers(executorId, 0)
+      //        makeQueue(executorId)
+      //        makeOffers(executorId, 0)
 
       case MiscellaneousProcessAdded(time: Long,
       processId: String, info: MiscellaneousProcessDetails) =>
@@ -326,9 +331,26 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             "messages.")))
     }
 
+    private def makeQueue(executorId: String): Unit = {
+      withLock {
+
+        val executorData = executorDataMap(executorId)
+        for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
+          logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
+          executorData.executorEndpoint.send(SetTaskQueue(Some(taskSet.name)))
+          executorData.assignedQueue = true
+          return
+        }
+
+
+        logInfo("no more task sets :(")
+        executorData.executorEndpoint.send(SetTaskQueue(None))
+        executorData.assignedQueue = false
+      }
+    }
 
     // Make fake resource offers on just one executor
-    private def makeOffers(executorId: String, taskQueue: Int): Unit = {
+    private def makeOffers(executorId: String, taskQueue: String): Unit = {
       withLock {
         if (!isExecutorActive(executorId)) return
 
@@ -343,12 +365,14 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           }, resourceProfileId = executorData.resourceProfileId
         )
 
-        val taskDesc = scheduler.nextOffer(offer)
+        val taskDesc = scheduler.nextOffer(offer, taskQueue)
         if (taskDesc.isDefined) {
           launchTask(taskDesc.get)
+        } else {
+          makeQueue(executorId)
         }
-//        val taskDescs = scheduler.resourceOffers(IndexedSeq(offer))
-//        if (taskDescs.nonEmpty) launchTasks(taskDescs)
+        //        val taskDescs = scheduler.resourceOffers(IndexedSeq(offer))
+        //        if (taskDescs.nonEmpty) launchTasks(taskDescs)
       }
     }
 
@@ -692,8 +716,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
   }
 
   // this function is for testing only
-  def getExecutorAvailableResources(
-                                     executorId: String): Map[String, ExecutorResourceInfo] = synchronized {
+  def getExecutorAvailableResources(executorId: String): Map[String, ExecutorResourceInfo] = synchronized {
     executorDataMap.get(executorId).map(_.resourcesInfo).getOrElse(Map.empty)
   }
 

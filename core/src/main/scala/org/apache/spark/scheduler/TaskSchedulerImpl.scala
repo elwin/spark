@@ -493,7 +493,7 @@ private[spark] class TaskSchedulerImpl(
     }
   }
 
-  def nextOffer(offer: WorkerOffer): Option[TaskDescription] = synchronized {
+  def nextOffer(offer: WorkerOffer, taskQueue: String): Option[TaskDescription] = synchronized {
     if (!hostToExecutors.contains(offer.host)) {
       hostToExecutors(offer.host) = new mutable.HashSet[String]()
     }
@@ -504,23 +504,22 @@ private[spark] class TaskSchedulerImpl(
       executorIdToRunningTaskIds(offer.executorId) = mutable.HashSet[Long]()
     }
 
-    for (taskSet <- rootPool.getSortedTaskSetQueue) {
+    val taskSet = rootPool.getSchedulableByName(taskQueue).asInstanceOf[TaskSetManager]
 
-      val taskResourceAssignments = mutable.HashMap[String, ResourceInformation]().toMap
+    val taskResourceAssignments = mutable.HashMap[String, ResourceInformation]().toMap
 
-      val (taskDesc, rejected, _) = taskSet.resourceOffer(
-        execId = offer.executorId,
-        host = offer.host,
-        maxLocality = TaskLocality.ANY,
-        taskResourceAssignments = taskResourceAssignments,
-      )
+    val (taskDesc, rejected, _) = taskSet.resourceOffer(
+      execId = offer.executorId,
+      host = offer.host,
+      maxLocality = TaskLocality.ANY,
+      taskResourceAssignments = taskResourceAssignments,
+    )
 
-      if (rejected) {
-        throw new Exception("ouf, offer rejected")
-      } else if (taskDesc.isDefined) {
-        addRunningTask(taskDesc.get.taskId, taskDesc.get.executorId, taskSet)
-        return taskDesc
-      }
+    if (rejected) {
+      throw new Exception("ouf, offer rejected")
+    } else if (taskDesc.isDefined) {
+      addRunningTask(taskDesc.get.taskId, taskDesc.get.executorId, taskSet)
+      return taskDesc
     }
 
     logInfo("no task found :(")

@@ -70,6 +70,8 @@ private[spark] class CoarseGrainedExecutorBackend(
 
   private var _resources = Map.empty[String, ResourceInformation]
 
+  private var currentTaskQueue: Option[String] = None
+
   /**
    * Map each taskId to the information about the resource allocated to it, Please refer to
    * [[ResourceInformation]] for specifics.
@@ -176,9 +178,14 @@ private[spark] class CoarseGrainedExecutorBackend(
           exitExecutor(1, "Unable to create executor due to " + e.getMessage, e)
       }
       driver match {
-        case Some(driverRef) => driverRef.send(RequestTaskQueue)
+        case Some(driverRef) => driverRef.send(RequestTaskQueue(executorId))
         case None => logWarning(s"Drop xxx because has not yet connected to driver")
       }
+
+    case SetTaskQueue(taskQueue) =>
+      currentTaskQueue = taskQueue
+      logInfo(s"Set task queue to $taskQueue")
+      requestNewTask() // TODO check if not already running
 
     case LaunchTask(data) =>
       if (executor == null) {
@@ -279,11 +286,16 @@ private[spark] class CoarseGrainedExecutorBackend(
     if (TaskState.isFinished(state)) {
       taskResources.remove(taskId)
 
-      val xx = RequestTask(executorId, 0)
-      logInfo("xxx sending request it")
+      requestNewTask()
+    }
+  }
+
+  private def requestNewTask(): Unit = {
+    if (currentTaskQueue.isDefined) {
+      val msg = RequestTask(executorId, currentTaskQueue.get)
       driver match {
-        case Some(driverRef) => driverRef.send(xx)
-        case None => logWarning(s"Drop $xx because has not yet connected to driver")
+        case Some(driverRef) => driverRef.send(msg)
+        case None => logWarning(s"Drop $msg because has not yet connected to driver")
       }
     }
   }
