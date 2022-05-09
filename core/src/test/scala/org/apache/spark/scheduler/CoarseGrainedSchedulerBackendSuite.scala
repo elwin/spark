@@ -262,7 +262,7 @@ class CoarseGrainedSchedulerBackendSuite extends SparkFunSuite with LocalSparkCo
     // make sure that `availableAddrs` below won't change
     when(ts.resourceOffers(any[IndexedSeq[WorkerOffer]], any[Boolean])).thenReturn(Seq.empty)
     backend.driverEndpoint.send(
-      StatusUpdate("1", 1, TaskState.FINISHED, buffer, taskResources))
+      StatusUpdate("1", 1, TaskState.FINISHED, Some("TaskSet_0"), buffer, taskResources))
 
     eventually(timeout(5 seconds)) {
       execResources = backend.getExecutorAvailableResources("1")

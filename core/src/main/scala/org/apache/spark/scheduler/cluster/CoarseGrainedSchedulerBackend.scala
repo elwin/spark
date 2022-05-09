@@ -147,9 +147,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     override def receive: PartialFunction[Any, Unit] = {
       case RequestTaskQueue(executorId) => makeQueue(executorId)
 
-      case RequestTask(executorId, taskQueue) => makeOffers(executorId, taskQueue)
-
-      case StatusUpdate(executorId, taskId, state, data, resources) =>
+      case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
         if (TaskState.isFinished(state)) {
           executorDataMap.get(executorId) match {
@@ -163,7 +161,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   r.release(v.addresses)
                 }
               }
-            //              makeOffers(executorId)
+              if (taskQueue.isDefined) makeOffers(executorId, taskQueue.get)
+
             case None =>
               // Ignoring the update since we don't know about the executor.
               logWarning(s"Ignored task status update ($taskId state $state) " +
@@ -339,7 +338,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
           executorData.executorEndpoint.send(SetTaskQueue(Some(taskSet.name)))
           executorData.assignedQueue = true
+          makeOffers(executorId, taskSet.name)
           return
+
         }
 
 

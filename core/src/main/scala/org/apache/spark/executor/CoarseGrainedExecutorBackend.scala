@@ -185,7 +185,6 @@ private[spark] class CoarseGrainedExecutorBackend(
     case SetTaskQueue(taskQueue) =>
       currentTaskQueue = taskQueue
       logInfo(s"Set task queue to $taskQueue")
-      requestNewTask() // TODO check if not already running
 
     case LaunchTask(data) =>
       if (executor == null) {
@@ -274,7 +273,7 @@ private[spark] class CoarseGrainedExecutorBackend(
       s"""elw3: {"type": "status_update", "task_id": $taskId, "state": "$state", "timestamp": ${System.nanoTime()}}"""
     )
     val resources = taskResources.getOrElse(taskId, Map.empty[String, ResourceInformation])
-    val msg = StatusUpdate(executorId, taskId, state, data, resources)
+    val msg = StatusUpdate(executorId, taskId, state, this.currentTaskQueue, data, resources)
     logInfo(s"""xxx: ${msg.state}""")
 
     driver match {
@@ -285,18 +284,6 @@ private[spark] class CoarseGrainedExecutorBackend(
     // TODO: Move to callee
     if (TaskState.isFinished(state)) {
       taskResources.remove(taskId)
-
-      requestNewTask()
-    }
-  }
-
-  private def requestNewTask(): Unit = {
-    if (currentTaskQueue.isDefined) {
-      val msg = RequestTask(executorId, currentTaskQueue.get)
-      driver match {
-        case Some(driverRef) => driverRef.send(msg)
-        case None => logWarning(s"Drop $msg because has not yet connected to driver")
-      }
     }
   }
 
