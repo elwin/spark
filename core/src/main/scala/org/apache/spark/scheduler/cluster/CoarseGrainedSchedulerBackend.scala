@@ -124,7 +124,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     val t0 = System.nanoTime()
     val result = block
     val t1 = System.nanoTime()
-    logInfo(s"""elw3: {"type": "measurement", "name": "${name}", "duration": ${t1 - t0}}""")
+    logInfo(s"""elw3: {"type": "measurement", "name": "${name}", "duration": ${t1 - t0}, "timestamp": $t0}""")
 
     result
   }
