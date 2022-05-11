@@ -120,6 +120,15 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       ThreadUtils.newDaemonSingleThreadScheduledExecutor("cleanup-decommission-execs")
     }
 
+  def time[R](block: => R, name: String): R = {
+    val t0 = System.nanoTime()
+    val result = block
+    val t1 = System.nanoTime()
+    logInfo(s"""elw3: {"type": "measurement", "name": "${name}", "duration": ${t1 - t0}}""")
+
+    result
+  }
+
   class DriverEndpoint extends IsolatedRpcEndpoint with Logging {
 
     override val rpcEnv: RpcEnv = CoarseGrainedSchedulerBackend.this.rpcEnv
@@ -161,7 +170,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   r.release(v.addresses)
                 }
               }
-              if (taskQueue.isDefined) makeOffers(executorId, taskQueue.get)
+              if (taskQueue.isDefined) time(makeOffers(executorId, taskQueue.get), "makeOffers")
 
             case None =>
               // Ignoring the update since we don't know about the executor.
