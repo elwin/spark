@@ -157,26 +157,36 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       case RequestTaskQueue(executorId) => makeQueue(executorId)
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
-        scheduler.statusUpdate(taskId, state, data.value)
-        if (TaskState.isFinished(state)) {
-          executorDataMap.get(executorId) match {
-            case Some(executorInfo) =>
-              val rpId = executorInfo.resourceProfileId
-              val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
-              val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
-              executorInfo.freeCores += taskCpus
-              resources.foreach { case (k, v) =>
-                executorInfo.resourcesInfo.get(k).foreach { r =>
-                  r.release(v.addresses)
-                }
-              }
-              if (taskQueue.isDefined) time(makeOffers(executorId, taskQueue.get), "makeOffers")
+        def run(): Unit = {
+          time(time({}, "nothing"), "time")
 
-            case None =>
-              // Ignoring the update since we don't know about the executor.
-              logWarning(s"Ignored task status update ($taskId state $state) " +
-                s"from unknown executor with ID $executorId")
+          scheduler.statusUpdate(taskId, state, data.value)
+          if (TaskState.isFinished(state)) {
+            executorDataMap.get(executorId) match {
+              case Some(executorInfo) =>
+                val rpId = executorInfo.resourceProfileId
+                val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
+                val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
+                executorInfo.freeCores += taskCpus
+                resources.foreach { case (k, v) =>
+                  executorInfo.resourcesInfo.get(k).foreach { r =>
+                    r.release(v.addresses)
+                  }
+                }
+                if (taskQueue.isDefined) time(makeOffers(executorId, taskQueue.get), "makeOffers")
+
+              case None =>
+                // Ignoring the update since we don't know about the executor.
+                logWarning(s"Ignored task status update ($taskId state $state) " +
+                  s"from unknown executor with ID $executorId")
+            }
           }
+        }
+
+        if (!TaskState.isFinished(state)) {
+          run()
+        } else {
+          time(run(), "statusUpdate")
         }
 
       case ReviveOffers =>
@@ -375,9 +385,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           }, resourceProfileId = executorData.resourceProfileId
         )
 
-        val taskDesc = scheduler.nextOffer(offer, taskQueue)
+        val taskDesc = time(scheduler.nextOffer(offer, taskQueue), "nextOffer")
         if (taskDesc.isDefined) {
-          launchTask(taskDesc.get)
+          time(launchTask(taskDesc.get), "launchTask")
         } else {
           makeQueue(executorId)
         }
@@ -387,7 +397,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     private def launchTask(task: TaskDescription): Unit = {
-      val serializedTask = TaskDescription.encode(task)
+      val serializedTask = time(TaskDescription.encode(task), "encode")
       if (serializedTask.limit() >= maxRpcMessageSize) {
         Option(scheduler.taskIdToTaskSetManager.get(task.taskId)).foreach { taskSetMgr =>
           try {
@@ -417,7 +427,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
           s"${executorData.executorHost}.")
 
-        executorData.executorEndpoint.send(LaunchTask(new SerializableBuffer(serializedTask)))
+        time(executorData.executorEndpoint.send(LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch")
       }
     }
 
