@@ -35,15 +35,15 @@ import org.apache.spark.util.CallSite
  * there can be multiple ActiveJobs trying to compute the same shuffle map stage.
  */
 private[spark] class ShuffleMapStage(
-    id: Int,
-    rdd: RDD[_],
-    numTasks: Int,
-    parents: List[Stage],
-    firstJobId: Int,
-    callSite: CallSite,
-    val shuffleDep: ShuffleDependency[_, _, _],
-    mapOutputTrackerMaster: MapOutputTrackerMaster,
-    resourceProfileId: Int)
+                                      id: Int,
+                                      rdd: RDD[_],
+                                      numTasks: Int,
+                                      parents: List[Stage],
+                                      firstJobId: Int,
+                                      callSite: CallSite,
+                                      val shuffleDep: ShuffleDependency[_, _, _],
+                                      mapOutputTrackerMaster: MapOutputTrackerMaster,
+                                      resourceProfileId: Int)
   extends Stage(id, rdd, numTasks, parents, firstJobId, callSite, resourceProfileId) {
 
   private[this] var _mapStageJobs: List[ActiveJob] = Nil

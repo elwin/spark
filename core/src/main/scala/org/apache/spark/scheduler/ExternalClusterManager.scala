@@ -27,6 +27,7 @@ private[spark] trait ExternalClusterManager {
   /**
    * Check if this cluster manager instance can create scheduler components
    * for a certain master URL.
+   *
    * @param masterURL the master URL
    * @return True if the cluster manager can create scheduler backend/
    */
@@ -34,7 +35,8 @@ private[spark] trait ExternalClusterManager {
 
   /**
    * Create a task scheduler instance for the given SparkContext
-   * @param sc SparkContext
+   *
+   * @param sc        SparkContext
    * @param masterURL the master URL
    * @return TaskScheduler that will be responsible for task handling
    */
@@ -43,20 +45,22 @@ private[spark] trait ExternalClusterManager {
   /**
    * Create a scheduler backend for the given SparkContext and scheduler. This is
    * called after task scheduler is created using `ExternalClusterManager.createTaskScheduler()`.
-   * @param sc SparkContext
+   *
+   * @param sc        SparkContext
    * @param masterURL the master URL
    * @param scheduler TaskScheduler that will be used with the scheduler backend.
    * @return SchedulerBackend that works with a TaskScheduler
    */
   def createSchedulerBackend(sc: SparkContext,
-      masterURL: String,
-      scheduler: TaskScheduler): SchedulerBackend
+                             masterURL: String,
+                             scheduler: TaskScheduler): SchedulerBackend
 
   /**
    * Initialize task scheduler and backend scheduler. This is called after the
    * scheduler components are created
+   *
    * @param scheduler TaskScheduler that will be responsible for task handling
-   * @param backend SchedulerBackend that works with a TaskScheduler
+   * @param backend   SchedulerBackend that works with a TaskScheduler
    */
   def initialize(scheduler: TaskScheduler, backend: SchedulerBackend): Unit
 }

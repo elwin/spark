@@ -29,26 +29,29 @@ private[spark] trait SchedulerBackend {
   private val appId = "spark-application-" + System.currentTimeMillis
 
   def start(): Unit
+
   def stop(): Unit
+
   /**
    * Update the current offers and schedule tasks
    */
   def reviveOffers(): Unit
+
   def defaultParallelism(): Int
 
   /**
    * Requests that an executor kills a running task.
    *
-   * @param taskId Id of the task.
-   * @param executorId Id of the executor the task is running on.
+   * @param taskId          Id of the task.
+   * @param executorId      Id of the executor the task is running on.
    * @param interruptThread Whether the executor should interrupt the task thread.
-   * @param reason The reason for the task kill.
+   * @param reason          The reason for the task kill.
    */
   def killTask(
-      taskId: Long,
-      executorId: String,
-      interruptThread: Boolean,
-      reason: String): Unit =
+                taskId: Long,
+                executorId: String,
+                interruptThread: Boolean,
+                reason: String): Unit =
     throw new UnsupportedOperationException
 
   def isReady(): Boolean = true
@@ -71,6 +74,7 @@ private[spark] trait SchedulerBackend {
   /**
    * Get the URLs for the driver logs. These URLs are used to display the links in the UI
    * Executors tab for the driver.
+   *
    * @return Map containing the log names and their respective URLs
    */
   def getDriverLogUrls: Option[Map[String, String]] = None
@@ -78,6 +82,7 @@ private[spark] trait SchedulerBackend {
   /**
    * Get the attributes on driver. These attributes are used to replace log URLs when
    * custom log url pattern is specified.
+   *
    * @return Map containing attributes on driver.
    */
   def getDriverAttributes: Option[Map[String, String]] = None
@@ -99,10 +104,11 @@ private[spark] trait SchedulerBackend {
    * Currently push based shuffle is disabled for both stage retry and stage reuse cases
    * (for eg: in the case where few partitions are lost due to failure). Hence this method
    * should be invoked only once for a ShuffleDependency.
+   *
    * @return List of external shuffle services locations
    */
   def getShufflePushMergerLocations(
-      numPartitions: Int,
-      resourceProfileId: Int): Seq[BlockManagerId] = Nil
+                                     numPartitions: Int,
+                                     resourceProfileId: Int): Seq[BlockManagerId] = Nil
 
 }

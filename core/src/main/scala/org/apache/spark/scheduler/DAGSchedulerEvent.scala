@@ -33,32 +33,32 @@ private[scheduler] sealed trait DAGSchedulerEvent
 
 /** A result-yielding job was submitted on a target RDD */
 private[scheduler] case class JobSubmitted(
-    jobId: Int,
-    finalRDD: RDD[_],
-    func: (TaskContext, Iterator[_]) => _,
-    partitions: Array[Int],
-    callSite: CallSite,
-    listener: JobListener,
-    properties: Properties = null)
+                                            jobId: Int,
+                                            finalRDD: RDD[_],
+                                            func: (TaskContext, Iterator[_]) => _,
+                                            partitions: Array[Int],
+                                            callSite: CallSite,
+                                            listener: JobListener,
+                                            properties: Properties = null)
   extends DAGSchedulerEvent
 
 /** A map stage as submitted to run as a separate job */
 private[scheduler] case class MapStageSubmitted(
-  jobId: Int,
-  dependency: ShuffleDependency[_, _, _],
-  callSite: CallSite,
-  listener: JobListener,
-  properties: Properties = null)
+                                                 jobId: Int,
+                                                 dependency: ShuffleDependency[_, _, _],
+                                                 callSite: CallSite,
+                                                 listener: JobListener,
+                                                 properties: Properties = null)
   extends DAGSchedulerEvent
 
 private[scheduler] case class StageCancelled(
-    stageId: Int,
-    reason: Option[String])
+                                              stageId: Int,
+                                              reason: Option[String])
   extends DAGSchedulerEvent
 
 private[scheduler] case class JobCancelled(
-    jobId: Int,
-    reason: Option[String])
+                                            jobId: Int,
+                                            reason: Option[String])
   extends DAGSchedulerEvent
 
 private[scheduler] case class JobGroupCancelled(groupId: String) extends DAGSchedulerEvent
@@ -72,12 +72,12 @@ private[scheduler]
 case class GettingResultEvent(taskInfo: TaskInfo) extends DAGSchedulerEvent
 
 private[scheduler] case class CompletionEvent(
-    task: Task[_],
-    reason: TaskEndReason,
-    result: Any,
-    accumUpdates: Seq[AccumulatorV2[_, _]],
-    metricPeaks: Array[Long],
-    taskInfo: TaskInfo)
+                                               task: Task[_],
+                                               reason: TaskEndReason,
+                                               result: Any,
+                                               accumUpdates: Seq[AccumulatorV2[_, _]],
+                                               metricPeaks: Array[Long],
+                                               taskInfo: TaskInfo)
   extends DAGSchedulerEvent
 
 private[scheduler] case class ExecutorAdded(execId: String, host: String) extends DAGSchedulerEvent
@@ -106,7 +106,7 @@ case class UnschedulableTaskSetRemoved(stageId: Int, stageAttemptId: Int)
   extends DAGSchedulerEvent
 
 private[scheduler] case class RegisterMergeStatuses(
-    stage: ShuffleMapStage, mergeStatuses: Seq[(Int, MergeStatus)])
+                                                     stage: ShuffleMapStage, mergeStatuses: Seq[(Int, MergeStatus)])
   extends DAGSchedulerEvent
 
 private[scheduler] case class ShuffleMergeFinalized(stage: ShuffleMapStage)

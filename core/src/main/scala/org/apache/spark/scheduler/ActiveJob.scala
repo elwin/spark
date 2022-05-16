@@ -33,19 +33,19 @@ import org.apache.spark.util.CallSite
  * other earlier stages (for RDDs in the DAG it depends on), and multiple jobs may share some of
  * these previous stages. These dependencies are managed inside DAGScheduler.
  *
- * @param jobId A unique ID for this job.
+ * @param jobId      A unique ID for this job.
  * @param finalStage The stage that this job computes (either a ResultStage for an action or a
- *   ShuffleMapStage for submitMapStage).
- * @param callSite Where this job was initiated in the user's program (shown on UI).
- * @param listener A listener to notify if tasks in this job finish or the job fails.
+ *                   ShuffleMapStage for submitMapStage).
+ * @param callSite   Where this job was initiated in the user's program (shown on UI).
+ * @param listener   A listener to notify if tasks in this job finish or the job fails.
  * @param properties Scheduling properties attached to the job, such as fair scheduler pool name.
  */
 private[spark] class ActiveJob(
-    val jobId: Int,
-    val finalStage: Stage,
-    val callSite: CallSite,
-    val listener: JobListener,
-    val properties: Properties) {
+                                val jobId: Int,
+                                val finalStage: Stage,
+                                val callSite: CallSite,
+                                val listener: JobListener,
+                                val properties: Properties) {
 
   /**
    * Number of partitions we need to compute for this job. Note that result stages may not need

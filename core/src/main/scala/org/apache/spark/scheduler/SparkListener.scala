@@ -54,28 +54,28 @@ case class SparkListenerTaskGettingResult(taskInfo: TaskInfo) extends SparkListe
 
 @DeveloperApi
 case class SparkListenerSpeculativeTaskSubmitted(
-    stageId: Int,
-    stageAttemptId: Int = 0)
+                                                  stageId: Int,
+                                                  stageAttemptId: Int = 0)
   extends SparkListenerEvent
 
 @DeveloperApi
 case class SparkListenerTaskEnd(
-    stageId: Int,
-    stageAttemptId: Int,
-    taskType: String,
-    reason: TaskEndReason,
-    taskInfo: TaskInfo,
-    taskExecutorMetrics: ExecutorMetrics,
-    // may be null if the task has failed
-    @Nullable taskMetrics: TaskMetrics)
+                                 stageId: Int,
+                                 stageAttemptId: Int,
+                                 taskType: String,
+                                 reason: TaskEndReason,
+                                 taskInfo: TaskInfo,
+                                 taskExecutorMetrics: ExecutorMetrics,
+                                 // may be null if the task has failed
+                                 @Nullable taskMetrics: TaskMetrics)
   extends SparkListenerEvent
 
 @DeveloperApi
 case class SparkListenerJobStart(
-    jobId: Int,
-    time: Long,
-    stageInfos: Seq[StageInfo],
-    properties: Properties = null)
+                                  jobId: Int,
+                                  time: Long,
+                                  stageInfos: Seq[StageInfo],
+                                  properties: Properties = null)
   extends SparkListenerEvent {
   // Note: this is here for backwards-compatibility with older versions of this event which
   // only stored stageIds and not StageInfos:
@@ -84,9 +84,9 @@ case class SparkListenerJobStart(
 
 @DeveloperApi
 case class SparkListenerJobEnd(
-    jobId: Int,
-    time: Long,
-    jobResult: JobResult)
+                                jobId: Int,
+                                time: Long,
+                                jobResult: JobResult)
   extends SparkListenerEvent
 
 @DeveloperApi
@@ -95,11 +95,11 @@ case class SparkListenerEnvironmentUpdate(environmentDetails: Map[String, Seq[(S
 
 @DeveloperApi
 case class SparkListenerBlockManagerAdded(
-    time: Long,
-    blockManagerId: BlockManagerId,
-    maxMem: Long,
-    maxOnHeapMem: Option[Long] = None,
-    maxOffHeapMem: Option[Long] = None) extends SparkListenerEvent {
+                                           time: Long,
+                                           blockManagerId: BlockManagerId,
+                                           maxMem: Long,
+                                           maxOnHeapMem: Option[Long] = None,
+                                           maxOffHeapMem: Option[Long] = None) extends SparkListenerEvent {
 }
 
 @DeveloperApi
@@ -120,59 +120,59 @@ case class SparkListenerExecutorRemoved(time: Long, executorId: String, reason: 
 @DeveloperApi
 @deprecated("use SparkListenerExecutorExcluded instead", "3.1.0")
 case class SparkListenerExecutorBlacklisted(
-    time: Long,
-    executorId: String,
-    taskFailures: Int)
+                                             time: Long,
+                                             executorId: String,
+                                             taskFailures: Int)
   extends SparkListenerEvent
 
 @DeveloperApi
 @Since("3.1.0")
 case class SparkListenerExecutorExcluded(
-    time: Long,
-    executorId: String,
-    taskFailures: Int)
+                                          time: Long,
+                                          executorId: String,
+                                          taskFailures: Int)
   extends SparkListenerEvent
 
 @deprecated("use SparkListenerExecutorExcludedForStage instead", "3.1.0")
 @DeveloperApi
 case class SparkListenerExecutorBlacklistedForStage(
-    time: Long,
-    executorId: String,
-    taskFailures: Int,
-    stageId: Int,
-    stageAttemptId: Int)
+                                                     time: Long,
+                                                     executorId: String,
+                                                     taskFailures: Int,
+                                                     stageId: Int,
+                                                     stageAttemptId: Int)
   extends SparkListenerEvent
 
 
 @DeveloperApi
 @Since("3.1.0")
 case class SparkListenerExecutorExcludedForStage(
-    time: Long,
-    executorId: String,
-    taskFailures: Int,
-    stageId: Int,
-    stageAttemptId: Int)
+                                                  time: Long,
+                                                  executorId: String,
+                                                  taskFailures: Int,
+                                                  stageId: Int,
+                                                  stageAttemptId: Int)
   extends SparkListenerEvent
 
 @deprecated("use SparkListenerNodeExcludedForStage instead", "3.1.0")
 @DeveloperApi
 case class SparkListenerNodeBlacklistedForStage(
-    time: Long,
-    hostId: String,
-    executorFailures: Int,
-    stageId: Int,
-    stageAttemptId: Int)
+                                                 time: Long,
+                                                 hostId: String,
+                                                 executorFailures: Int,
+                                                 stageId: Int,
+                                                 stageAttemptId: Int)
   extends SparkListenerEvent
 
 
 @DeveloperApi
 @Since("3.1.0")
 case class SparkListenerNodeExcludedForStage(
-    time: Long,
-    hostId: String,
-    executorFailures: Int,
-    stageId: Int,
-    stageAttemptId: Int)
+                                              time: Long,
+                                              hostId: String,
+                                              executorFailures: Int,
+                                              stageId: Int,
+                                              stageAttemptId: Int)
   extends SparkListenerEvent
 
 @deprecated("use SparkListenerExecutorUnexcluded instead", "3.1.0")
@@ -188,18 +188,18 @@ case class SparkListenerExecutorUnexcluded(time: Long, executorId: String)
 @deprecated("use SparkListenerNodeExcluded instead", "3.1.0")
 @DeveloperApi
 case class SparkListenerNodeBlacklisted(
-    time: Long,
-    hostId: String,
-    executorFailures: Int)
+                                         time: Long,
+                                         hostId: String,
+                                         executorFailures: Int)
   extends SparkListenerEvent
 
 
 @DeveloperApi
 @Since("3.1.0")
 case class SparkListenerNodeExcluded(
-    time: Long,
-    hostId: String,
-    executorFailures: Int)
+                                      time: Long,
+                                      hostId: String,
+                                      executorFailures: Int)
   extends SparkListenerEvent
 
 @deprecated("use SparkListenerNodeUnexcluded instead", "3.1.0")
@@ -215,14 +215,14 @@ case class SparkListenerNodeUnexcluded(time: Long, hostId: String)
 @DeveloperApi
 @Since("3.1.0")
 case class SparkListenerUnschedulableTaskSetAdded(
-  stageId: Int,
-  stageAttemptId: Int) extends SparkListenerEvent
+                                                   stageId: Int,
+                                                   stageAttemptId: Int) extends SparkListenerEvent
 
 @DeveloperApi
 @Since("3.1.0")
 case class SparkListenerUnschedulableTaskSetRemoved(
-  stageId: Int,
-  stageAttemptId: Int) extends SparkListenerEvent
+                                                     stageId: Int,
+                                                     stageAttemptId: Int) extends SparkListenerEvent
 
 @DeveloperApi
 case class SparkListenerBlockUpdated(blockUpdatedInfo: BlockUpdatedInfo) extends SparkListenerEvent
@@ -230,48 +230,49 @@ case class SparkListenerBlockUpdated(blockUpdatedInfo: BlockUpdatedInfo) extends
 @DeveloperApi
 @Since("3.2.0")
 case class SparkListenerMiscellaneousProcessAdded(time: Long, processId: String,
-    info: MiscellaneousProcessDetails) extends SparkListenerEvent
+                                                  info: MiscellaneousProcessDetails) extends SparkListenerEvent
 
 /**
  * Periodic updates from executors.
- * @param execId executor id
- * @param accumUpdates sequence of (taskId, stageId, stageAttemptId, accumUpdates)
- * @param executorUpdates executor level per-stage metrics updates
  *
+ * @param execId          executor id
+ * @param accumUpdates    sequence of (taskId, stageId, stageAttemptId, accumUpdates)
+ * @param executorUpdates executor level per-stage metrics updates
  * @since 3.1.0
  */
 @DeveloperApi
 case class SparkListenerExecutorMetricsUpdate(
-    execId: String,
-    accumUpdates: Seq[(Long, Int, Int, Seq[AccumulableInfo])],
-    executorUpdates: Map[(Int, Int), ExecutorMetrics] = Map.empty)
+                                               execId: String,
+                                               accumUpdates: Seq[(Long, Int, Int, Seq[AccumulableInfo])],
+                                               executorUpdates: Map[(Int, Int), ExecutorMetrics] = Map.empty)
   extends SparkListenerEvent
 
 /**
  * Peak metric values for the executor for the stage, written to the history log at stage
  * completion.
- * @param execId executor id
- * @param stageId stage id
- * @param stageAttemptId stage attempt
+ *
+ * @param execId          executor id
+ * @param stageId         stage id
+ * @param stageAttemptId  stage attempt
  * @param executorMetrics executor level metrics peak values
  */
 @DeveloperApi
 case class SparkListenerStageExecutorMetrics(
-    execId: String,
-    stageId: Int,
-    stageAttemptId: Int,
-    executorMetrics: ExecutorMetrics)
+                                              execId: String,
+                                              stageId: Int,
+                                              stageAttemptId: Int,
+                                              executorMetrics: ExecutorMetrics)
   extends SparkListenerEvent
 
 @DeveloperApi
 case class SparkListenerApplicationStart(
-    appName: String,
-    appId: Option[String],
-    time: Long,
-    sparkUser: String,
-    appAttemptId: Option[String],
-    driverLogs: Option[Map[String, String]] = None,
-    driverAttributes: Option[Map[String, String]] = None) extends SparkListenerEvent
+                                          appName: String,
+                                          appId: Option[String],
+                                          time: Long,
+                                          sparkUser: String,
+                                          appAttemptId: Option[String],
+                                          driverLogs: Option[Map[String, String]] = None,
+                                          driverAttributes: Option[Map[String, String]] = None) extends SparkListenerEvent
 
 @DeveloperApi
 case class SparkListenerApplicationEnd(time: Long) extends SparkListenerEvent
@@ -399,13 +400,13 @@ private[spark] trait SparkListenerInterface {
    */
   @deprecated("use onExecutorExcludedForStage instead", "3.1.0")
   def onExecutorBlacklistedForStage(
-      executorBlacklistedForStage: SparkListenerExecutorBlacklistedForStage): Unit
+                                     executorBlacklistedForStage: SparkListenerExecutorBlacklistedForStage): Unit
 
   /**
    * Called when the driver excludes an executor for a stage.
    */
   def onExecutorExcludedForStage(
-      executorExcludedForStage: SparkListenerExecutorExcludedForStage): Unit
+                                  executorExcludedForStage: SparkListenerExecutorExcludedForStage): Unit
 
   /**
    * Called when the driver excludes a node for a stage.
@@ -456,14 +457,14 @@ private[spark] trait SparkListenerInterface {
    * is enabled.
    */
   def onUnschedulableTaskSetAdded(
-      unschedulableTaskSetAdded: SparkListenerUnschedulableTaskSetAdded): Unit
+                                   unschedulableTaskSetAdded: SparkListenerUnschedulableTaskSetAdded): Unit
 
   /**
    * Called when an unschedulable taskset becomes schedulable and dynamic allocation
    * is enabled.
    */
   def onUnschedulableTaskSetRemoved(
-      unschedulableTaskSetRemoved: SparkListenerUnschedulableTaskSetRemoved): Unit
+                                     unschedulableTaskSetRemoved: SparkListenerUnschedulableTaskSetRemoved): Unit
 
   /**
    * Called when the driver receives a block update info.
@@ -496,85 +497,91 @@ private[spark] trait SparkListenerInterface {
  */
 @DeveloperApi
 abstract class SparkListener extends SparkListenerInterface {
-  override def onStageCompleted(stageCompleted: SparkListenerStageCompleted): Unit = { }
+  override def onStageCompleted(stageCompleted: SparkListenerStageCompleted): Unit = {}
 
-  override def onStageSubmitted(stageSubmitted: SparkListenerStageSubmitted): Unit = { }
+  override def onStageSubmitted(stageSubmitted: SparkListenerStageSubmitted): Unit = {}
 
-  override def onTaskStart(taskStart: SparkListenerTaskStart): Unit = { }
+  override def onTaskStart(taskStart: SparkListenerTaskStart): Unit = {}
 
-  override def onTaskGettingResult(taskGettingResult: SparkListenerTaskGettingResult): Unit = { }
+  override def onTaskGettingResult(taskGettingResult: SparkListenerTaskGettingResult): Unit = {}
 
-  override def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit = { }
+  override def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit = {}
 
-  override def onJobStart(jobStart: SparkListenerJobStart): Unit = { }
+  override def onJobStart(jobStart: SparkListenerJobStart): Unit = {}
 
-  override def onJobEnd(jobEnd: SparkListenerJobEnd): Unit = { }
+  override def onJobEnd(jobEnd: SparkListenerJobEnd): Unit = {}
 
-  override def onEnvironmentUpdate(environmentUpdate: SparkListenerEnvironmentUpdate): Unit = { }
+  override def onEnvironmentUpdate(environmentUpdate: SparkListenerEnvironmentUpdate): Unit = {}
 
-  override def onBlockManagerAdded(blockManagerAdded: SparkListenerBlockManagerAdded): Unit = { }
+  override def onBlockManagerAdded(blockManagerAdded: SparkListenerBlockManagerAdded): Unit = {}
 
   override def onBlockManagerRemoved(
-      blockManagerRemoved: SparkListenerBlockManagerRemoved): Unit = { }
+                                      blockManagerRemoved: SparkListenerBlockManagerRemoved): Unit = {}
 
-  override def onUnpersistRDD(unpersistRDD: SparkListenerUnpersistRDD): Unit = { }
+  override def onUnpersistRDD(unpersistRDD: SparkListenerUnpersistRDD): Unit = {}
 
-  override def onApplicationStart(applicationStart: SparkListenerApplicationStart): Unit = { }
+  override def onApplicationStart(applicationStart: SparkListenerApplicationStart): Unit = {}
 
-  override def onApplicationEnd(applicationEnd: SparkListenerApplicationEnd): Unit = { }
+  override def onApplicationEnd(applicationEnd: SparkListenerApplicationEnd): Unit = {}
 
   override def onExecutorMetricsUpdate(
-      executorMetricsUpdate: SparkListenerExecutorMetricsUpdate): Unit = { }
+                                        executorMetricsUpdate: SparkListenerExecutorMetricsUpdate): Unit = {}
 
   override def onStageExecutorMetrics(
-      executorMetrics: SparkListenerStageExecutorMetrics): Unit = { }
+                                       executorMetrics: SparkListenerStageExecutorMetrics): Unit = {}
 
-  override def onExecutorAdded(executorAdded: SparkListenerExecutorAdded): Unit = { }
+  override def onExecutorAdded(executorAdded: SparkListenerExecutorAdded): Unit = {}
 
-  override def onExecutorRemoved(executorRemoved: SparkListenerExecutorRemoved): Unit = { }
+  override def onExecutorRemoved(executorRemoved: SparkListenerExecutorRemoved): Unit = {}
 
   override def onExecutorBlacklisted(
-      executorBlacklisted: SparkListenerExecutorBlacklisted): Unit = { }
+                                      executorBlacklisted: SparkListenerExecutorBlacklisted): Unit = {}
+
   override def onExecutorExcluded(
-      executorExcluded: SparkListenerExecutorExcluded): Unit = { }
+                                   executorExcluded: SparkListenerExecutorExcluded): Unit = {}
 
   override def onExecutorBlacklistedForStage(
-      executorBlacklistedForStage: SparkListenerExecutorBlacklistedForStage): Unit = { }
+                                              executorBlacklistedForStage: SparkListenerExecutorBlacklistedForStage): Unit = {}
+
   override def onExecutorExcludedForStage(
-      executorExcludedForStage: SparkListenerExecutorExcludedForStage): Unit = { }
+                                           executorExcludedForStage: SparkListenerExecutorExcludedForStage): Unit = {}
 
   override def onNodeBlacklistedForStage(
-      nodeBlacklistedForStage: SparkListenerNodeBlacklistedForStage): Unit = { }
+                                          nodeBlacklistedForStage: SparkListenerNodeBlacklistedForStage): Unit = {}
+
   override def onNodeExcludedForStage(
-      nodeExcludedForStage: SparkListenerNodeExcludedForStage): Unit = { }
+                                       nodeExcludedForStage: SparkListenerNodeExcludedForStage): Unit = {}
 
   override def onExecutorUnblacklisted(
-      executorUnblacklisted: SparkListenerExecutorUnblacklisted): Unit = { }
+                                        executorUnblacklisted: SparkListenerExecutorUnblacklisted): Unit = {}
+
   override def onExecutorUnexcluded(
-      executorUnexcluded: SparkListenerExecutorUnexcluded): Unit = { }
+                                     executorUnexcluded: SparkListenerExecutorUnexcluded): Unit = {}
 
   override def onNodeBlacklisted(
-      nodeBlacklisted: SparkListenerNodeBlacklisted): Unit = { }
+                                  nodeBlacklisted: SparkListenerNodeBlacklisted): Unit = {}
+
   override def onNodeExcluded(
-      nodeExcluded: SparkListenerNodeExcluded): Unit = { }
+                               nodeExcluded: SparkListenerNodeExcluded): Unit = {}
 
   override def onNodeUnblacklisted(
-      nodeUnblacklisted: SparkListenerNodeUnblacklisted): Unit = { }
+                                    nodeUnblacklisted: SparkListenerNodeUnblacklisted): Unit = {}
+
   override def onNodeUnexcluded(
-      nodeUnexcluded: SparkListenerNodeUnexcluded): Unit = { }
+                                 nodeUnexcluded: SparkListenerNodeUnexcluded): Unit = {}
 
   override def onUnschedulableTaskSetAdded(
-      unschedulableTaskSetAdded: SparkListenerUnschedulableTaskSetAdded): Unit = { }
+                                            unschedulableTaskSetAdded: SparkListenerUnschedulableTaskSetAdded): Unit = {}
 
   override def onUnschedulableTaskSetRemoved(
-      unschedulableTaskSetRemoved: SparkListenerUnschedulableTaskSetRemoved): Unit = { }
+                                              unschedulableTaskSetRemoved: SparkListenerUnschedulableTaskSetRemoved): Unit = {}
 
-  override def onBlockUpdated(blockUpdated: SparkListenerBlockUpdated): Unit = { }
+  override def onBlockUpdated(blockUpdated: SparkListenerBlockUpdated): Unit = {}
 
   override def onSpeculativeTaskSubmitted(
-      speculativeTask: SparkListenerSpeculativeTaskSubmitted): Unit = { }
+                                           speculativeTask: SparkListenerSpeculativeTaskSubmitted): Unit = {}
 
-  override def onOtherEvent(event: SparkListenerEvent): Unit = { }
+  override def onOtherEvent(event: SparkListenerEvent): Unit = {}
 
-  override def onResourceProfileAdded(event: SparkListenerResourceProfileAdded): Unit = { }
+  override def onResourceProfileAdded(event: SparkListenerResourceProfileAdded): Unit = {}
 }

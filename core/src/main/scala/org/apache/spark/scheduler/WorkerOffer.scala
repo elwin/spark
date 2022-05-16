@@ -26,11 +26,11 @@ import org.apache.spark.resource.ResourceProfile
  */
 private[spark]
 case class WorkerOffer(
-    executorId: String,
-    host: String,
-    cores: Int,
-    // `address` is an optional hostPort string, it provide more useful information than `host`
-    // when multiple executors are launched on the same host.
-    address: Option[String] = None,
-    resources: Map[String, Buffer[String]] = Map.empty,
-    resourceProfileId: Int = ResourceProfile.DEFAULT_RESOURCE_PROFILE_ID)
+                        executorId: String,
+                        host: String,
+                        cores: Int,
+                        // `address` is an optional hostPort string, it provide more useful information than `host`
+                        // when multiple executors are launched on the same host.
+                        address: Option[String] = None,
+                        resources: Map[String, Buffer[String]] = Map.empty,
+                        resourceProfileId: Int = ResourceProfile.DEFAULT_RESOURCE_PROFILE_ID)

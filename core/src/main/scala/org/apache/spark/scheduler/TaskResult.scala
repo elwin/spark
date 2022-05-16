@@ -37,9 +37,9 @@ private[spark] case class IndirectTaskResult[T](blockId: BlockId, size: Int)
 
 /** A TaskResult that contains the task's return value, accumulator updates and metric peaks. */
 private[spark] class DirectTaskResult[T](
-    var valueBytes: ByteBuffer,
-    var accumUpdates: Seq[AccumulatorV2[_, _]],
-    var metricPeaks: Array[Long])
+                                          var valueBytes: ByteBuffer,
+                                          var accumUpdates: Seq[AccumulatorV2[_, _]],
+                                          var metricPeaks: Array[Long])
   extends TaskResult[T] with Externalizable {
 
   private var valueObjectDeserialized = false

@@ -26,31 +26,31 @@ import org.apache.spark.resource.ResourceProfile.DEFAULT_RESOURCE_PROFILE_ID
  */
 @DeveloperApi
 class ExecutorInfo(
-    val executorHost: String,
-    val totalCores: Int,
-    val logUrlMap: Map[String, String],
-    val attributes: Map[String, String],
-    val resourcesInfo: Map[String, ResourceInformation],
-    val resourceProfileId: Int) {
+                    val executorHost: String,
+                    val totalCores: Int,
+                    val logUrlMap: Map[String, String],
+                    val attributes: Map[String, String],
+                    val resourcesInfo: Map[String, ResourceInformation],
+                    val resourceProfileId: Int) {
 
   def this(executorHost: String, totalCores: Int, logUrlMap: Map[String, String]) = {
     this(executorHost, totalCores, logUrlMap, Map.empty, Map.empty, DEFAULT_RESOURCE_PROFILE_ID)
   }
 
   def this(
-      executorHost: String,
-      totalCores: Int,
-      logUrlMap: Map[String, String],
-      attributes: Map[String, String]) = {
+            executorHost: String,
+            totalCores: Int,
+            logUrlMap: Map[String, String],
+            attributes: Map[String, String]) = {
     this(executorHost, totalCores, logUrlMap, attributes, Map.empty, DEFAULT_RESOURCE_PROFILE_ID)
   }
 
   def this(
-      executorHost: String,
-      totalCores: Int,
-      logUrlMap: Map[String, String],
-      attributes: Map[String, String],
-      resourcesInfo: Map[String, ResourceInformation]) = {
+            executorHost: String,
+            totalCores: Int,
+            logUrlMap: Map[String, String],
+            attributes: Map[String, String],
+            resourcesInfo: Map[String, ResourceInformation]) = {
     this(executorHost, totalCores, logUrlMap, attributes, resourcesInfo,
       DEFAULT_RESOURCE_PROFILE_ID)
   }

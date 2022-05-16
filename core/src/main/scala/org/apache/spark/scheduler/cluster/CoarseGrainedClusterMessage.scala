@@ -32,10 +32,10 @@ private[spark] object CoarseGrainedClusterMessages {
   case class RetrieveSparkAppConfig(resourceProfileId: Int) extends CoarseGrainedClusterMessage
 
   case class SparkAppConfig(
-      sparkProperties: Seq[(String, String)],
-      ioEncryptionKey: Option[Array[Byte]],
-      hadoopDelegationCreds: Option[Array[Byte]],
-      resourceProfile: ResourceProfile)
+                             sparkProperties: Seq[(String, String)],
+                             ioEncryptionKey: Option[Array[Byte]],
+                             hadoopDelegationCreds: Option[Array[Byte]],
+                             resourceProfile: ResourceProfile)
     extends CoarseGrainedClusterMessage
 
   case object RetrieveLastAllocatedExecutorId extends CoarseGrainedClusterMessage
@@ -57,30 +57,30 @@ private[spark] object CoarseGrainedClusterMessages {
 
   // Executors to driver
   case class RegisterExecutor(
-      executorId: String,
-      executorRef: RpcEndpointRef,
-      hostname: String,
-      cores: Int,
-      logUrls: Map[String, String],
-      attributes: Map[String, String],
-      resources: Map[String, ResourceInformation],
-      resourceProfileId: Int)
+                               executorId: String,
+                               executorRef: RpcEndpointRef,
+                               hostname: String,
+                               cores: Int,
+                               logUrls: Map[String, String],
+                               attributes: Map[String, String],
+                               resources: Map[String, ResourceInformation],
+                               resourceProfileId: Int)
     extends CoarseGrainedClusterMessage
 
   case class LaunchedExecutor(executorId: String) extends CoarseGrainedClusterMessage
 
   case class StatusUpdate(
-      executorId: String,
-      taskId: Long,
-      state: TaskState,
-      data: SerializableBuffer,
-      resources: Map[String, ResourceInformation] = Map.empty)
+                           executorId: String,
+                           taskId: Long,
+                           state: TaskState,
+                           data: SerializableBuffer,
+                           resources: Map[String, ResourceInformation] = Map.empty)
     extends CoarseGrainedClusterMessage
 
   object StatusUpdate {
     /** Alternate factory method that takes a ByteBuffer directly for the data field */
     def apply(executorId: String, taskId: Long, state: TaskState, data: ByteBuffer,
-        resources: Map[String, ResourceInformation]): StatusUpdate = {
+              resources: Map[String, ResourceInformation]): StatusUpdate = {
       StatusUpdate(executorId, taskId, state, new SerializableBuffer(data), resources)
     }
   }
@@ -116,7 +116,7 @@ private[spark] object CoarseGrainedClusterMessages {
 
   // Exchanged between the driver and the AM in Yarn client mode
   case class AddWebUIFilter(
-      filterName: String, filterParams: Map[String, String], proxyBase: String)
+                             filterName: String, filterParams: Map[String, String], proxyBase: String)
     extends CoarseGrainedClusterMessage
 
   // Messages exchanged between the driver and the cluster manager for executor allocation
@@ -126,7 +126,7 @@ private[spark] object CoarseGrainedClusterMessages {
 
   // Send Miscellaneous Process information to the driver
   case class MiscellaneousProcessAdded(
-      time: Long, processId: String, info: MiscellaneousProcessDetails)
+                                        time: Long, processId: String, info: MiscellaneousProcessDetails)
     extends CoarseGrainedClusterMessage
 
   // Used by YARN's client mode AM to retrieve the current set of delegation tokens.
@@ -135,10 +135,10 @@ private[spark] object CoarseGrainedClusterMessages {
   // Request executors by specifying the new total number of executors desired
   // This includes executors already pending or running
   case class RequestExecutors(
-      resourceProfileToTotalExecs: Map[ResourceProfile, Int],
-      numLocalityAwareTasksPerResourceProfileId: Map[Int, Int],
-      hostToLocalTaskCount: Map[Int, Map[String, Int]],
-      excludedNodes: Set[String])
+                               resourceProfileToTotalExecs: Map[ResourceProfile, Int],
+                               numLocalityAwareTasksPerResourceProfileId: Map[Int, Int],
+                               hostToLocalTaskCount: Map[Int, Map[String, Int]],
+                               excludedNodes: Set[String])
     extends CoarseGrainedClusterMessage
 
   // Check if an executor was force-killed but for a reason unrelated to the running tasks.

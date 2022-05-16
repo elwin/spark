@@ -53,20 +53,20 @@ private[spark] object ExecutorKilled extends ExecutorLossReason("Executor killed
  * not yet fail any tasks that were running in the executor before the real loss reason
  * is known.
  */
-private [spark] object LossReasonPending extends ExecutorLossReason("Pending loss reason.")
+private[spark] object LossReasonPending extends ExecutorLossReason("Pending loss reason.")
 
 /**
- * @param _message human readable loss reason
- * @param workerHost it's defined when the host is confirmed lost too (i.e. including
- *                   shuffle service)
+ * @param _message    human readable loss reason
+ * @param workerHost  it's defined when the host is confirmed lost too (i.e. including
+ *                    shuffle service)
  * @param causedByApp whether the loss of the executor is the fault of the running app.
  *                    (assumed true by default unless known explicitly otherwise)
  */
 private[spark]
 case class ExecutorProcessLost(
-    _message: String = "Executor Process Lost",
-    workerHost: Option[String] = None,
-    causedByApp: Boolean = true)
+                                _message: String = "Executor Process Lost",
+                                workerHost: Option[String] = None,
+                                causedByApp: Boolean = true)
   extends ExecutorLossReason(_message)
 
 /**
@@ -78,5 +78,5 @@ case class ExecutorProcessLost(
  *
  * @param workerHost it is defined when the worker is decommissioned too
  */
-private [spark] case class ExecutorDecommission(workerHost: Option[String] = None)
- extends ExecutorLossReason("Executor decommission.")
+private[spark] case class ExecutorDecommission(workerHost: Option[String] = None)
+  extends ExecutorLossReason("Executor decommission.")

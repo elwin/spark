@@ -35,11 +35,11 @@ import org.apache.spark.util.Clock
  * A monitor for executor activity, used by ExecutorAllocationManager to detect idle executors.
  */
 private[spark] class ExecutorMonitor(
-    conf: SparkConf,
-    client: ExecutorAllocationClient,
-    listenerBus: LiveListenerBus,
-    clock: Clock,
-    metrics: ExecutorAllocationManagerSource = null)
+                                      conf: SparkConf,
+                                      client: ExecutorAllocationClient,
+                                      listenerBus: LiveListenerBus,
+                                      clock: Clock,
+                                      metrics: ExecutorAllocationManagerSource = null)
   extends SparkListener with CleanerListener with Logging {
 
   private val idleTimeoutNs = TimeUnit.SECONDS.toNanos(
@@ -117,7 +117,8 @@ private[spark] class ExecutorMonitor(
       var newNextTimeout = Long.MaxValue
       timedOutExecs = executors.asScala
         .filter { case (_, exec) =>
-          !exec.pendingRemoval && !exec.hasActiveShuffle && !exec.decommissioning}
+          !exec.pendingRemoval && !exec.hasActiveShuffle && !exec.decommissioning
+        }
         .filter { case (_, exec) =>
           val deadline = exec.timeoutAt
           if (deadline > now) {
@@ -129,7 +130,7 @@ private[spark] class ExecutorMonitor(
             true
           }
         }
-        .map { case (name, exec) => (name, exec.resourceProfileId)}
+        .map { case (name, exec) => (name, exec.resourceProfileId) }
         .toSeq
       updateNextTimeout(newNextTimeout)
     }
@@ -441,7 +442,7 @@ private[spark] class ExecutorMonitor(
     case _ =>
   }
 
-  override def rddCleaned(rddId: Int): Unit = { }
+  override def rddCleaned(rddId: Int): Unit = {}
 
   override def shuffleCleaned(shuffleId: Int): Unit = {
     // Only post the event if tracking is enabled
@@ -452,11 +453,11 @@ private[spark] class ExecutorMonitor(
     }
   }
 
-  override def broadcastCleaned(broadcastId: Long): Unit = { }
+  override def broadcastCleaned(broadcastId: Long): Unit = {}
 
-  override def accumCleaned(accId: Long): Unit = { }
+  override def accumCleaned(accId: Long): Unit = {}
 
-  override def checkpointCleaned(rddId: Long): Unit = { }
+  override def checkpointCleaned(rddId: Long): Unit = {}
 
   // Visible for testing.
   private[dynalloc] def isExecutorIdle(id: String): Boolean = {
@@ -488,15 +489,15 @@ private[spark] class ExecutorMonitor(
   private def ensureExecutorIsTracked(id: String, resourceProfileId: Int): Tracker = {
     val numExecsWithRpId = execResourceProfileCount.computeIfAbsent(resourceProfileId, _ => 0)
     val execTracker = executors.computeIfAbsent(id, _ => {
-        val newcount = numExecsWithRpId + 1
-        execResourceProfileCount.put(resourceProfileId, newcount)
-        logDebug(s"Executor added with ResourceProfile id: $resourceProfileId " +
-          s"count is now $newcount")
-        new Tracker(resourceProfileId)
-      })
+      val newcount = numExecsWithRpId + 1
+      execResourceProfileCount.put(resourceProfileId, newcount)
+      logDebug(s"Executor added with ResourceProfile id: $resourceProfileId " +
+        s"count is now $newcount")
+      new Tracker(resourceProfileId)
+    })
     // if we had added executor before without knowing the resource profile id, fix it up
     if (execTracker.resourceProfileId == UNKNOWN_RESOURCE_PROFILE_ID &&
-        resourceProfileId != UNKNOWN_RESOURCE_PROFILE_ID) {
+      resourceProfileId != UNKNOWN_RESOURCE_PROFILE_ID) {
       logDebug(s"Executor: $id, resource profile id was unknown, setting " +
         s"it to $resourceProfileId")
       execTracker.resourceProfileId = resourceProfileId

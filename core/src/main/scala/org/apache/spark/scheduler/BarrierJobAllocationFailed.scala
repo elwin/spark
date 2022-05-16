@@ -34,8 +34,8 @@ private[spark] class BarrierJobRunWithDynamicAllocationException
     BarrierJobAllocationFailed.ERROR_MESSAGE_RUN_BARRIER_WITH_DYN_ALLOCATION)
 
 private[spark] class BarrierJobSlotsNumberCheckFailed(
-    val requiredConcurrentTasks: Int,
-    val maxConcurrentTasks: Int)
+                                                       val requiredConcurrentTasks: Int,
+                                                       val maxConcurrentTasks: Int)
   extends BarrierJobAllocationFailed(
     BarrierJobAllocationFailed.ERROR_MESSAGE_BARRIER_REQUIRE_MORE_SLOTS_THAN_CURRENT_TOTAL_NUMBER)
 

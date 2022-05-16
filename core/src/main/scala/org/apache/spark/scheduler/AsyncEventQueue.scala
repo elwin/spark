@@ -35,12 +35,12 @@ import org.apache.spark.util.Utils
  * called when no more events need to be delivered.
  */
 private class AsyncEventQueue(
-    val name: String,
-    conf: SparkConf,
-    metrics: LiveListenerBusMetrics,
-    bus: LiveListenerBus)
+                               val name: String,
+                               conf: SparkConf,
+                               metrics: LiveListenerBusMetrics,
+                               bus: LiveListenerBus)
   extends SparkListenerBus
-  with Logging {
+    with Logging {
 
   import AsyncEventQueue._
 
@@ -92,6 +92,7 @@ private class AsyncEventQueue(
 
   private val dispatchThread = new Thread(s"spark-listener-group-$name") {
     setDaemon(true)
+
     override def run(): Unit = Utils.tryOrStopSparkContext(sc) {
       dispatch()
     }
@@ -212,7 +213,7 @@ private class AsyncEventQueue(
 
 private object AsyncEventQueue {
 
-  val POISON_PILL = new SparkListenerEvent() { }
+  val POISON_PILL = new SparkListenerEvent() {}
 
   val LOGGING_INTERVAL = 60 * 1000
 }

@@ -72,9 +72,9 @@ private[spark] object MapStatus {
     .getOrElse(config.SHUFFLE_MIN_NUM_PARTS_TO_HIGHLY_COMPRESS.defaultValue.get)
 
   def apply(
-      loc: BlockManagerId,
-      uncompressedSizes: Array[Long],
-      mapTaskId: Long): MapStatus = {
+             loc: BlockManagerId,
+             uncompressedSizes: Array[Long],
+             mapTaskId: Long): MapStatus = {
     if (uncompressedSizes.length > minPartitionsToUseHighlyCompressMapStatus) {
       HighlyCompressedMapStatus(loc, uncompressedSizes, mapTaskId)
     } else {
@@ -116,14 +116,14 @@ private[spark] object MapStatus {
  * A [[MapStatus]] implementation that tracks the size of each block. Size for each block is
  * represented using a single byte.
  *
- * @param loc location where the task is being executed.
+ * @param loc             location where the task is being executed.
  * @param compressedSizes size of the blocks, indexed by reduce partition id.
- * @param _mapTaskId unique task id for the task
+ * @param _mapTaskId      unique task id for the task
  */
 private[spark] class CompressedMapStatus(
-    private[this] var loc: BlockManagerId,
-    private[this] var compressedSizes: Array[Byte],
-    private[this] var _mapTaskId: Long)
+                                          private[this] var loc: BlockManagerId,
+                                          private[this] var compressedSizes: Array[Byte],
+                                          private[this] var _mapTaskId: Long)
   extends MapStatus with Externalizable {
 
   // For deserialization only
@@ -166,20 +166,20 @@ private[spark] class CompressedMapStatus(
  * than spark.shuffle.accurateBlockThreshold. It stores the average size of other non-empty blocks,
  * plus a bitmap for tracking which blocks are empty.
  *
- * @param loc location where the task is being executed
+ * @param loc               location where the task is being executed
  * @param numNonEmptyBlocks the number of non-empty blocks
- * @param emptyBlocks a bitmap tracking which blocks are empty
- * @param avgSize average size of the non-empty and non-huge blocks
- * @param hugeBlockSizes sizes of huge blocks by their reduceId.
- * @param _mapTaskId unique task id for the task
+ * @param emptyBlocks       a bitmap tracking which blocks are empty
+ * @param avgSize           average size of the non-empty and non-huge blocks
+ * @param hugeBlockSizes    sizes of huge blocks by their reduceId.
+ * @param _mapTaskId        unique task id for the task
  */
-private[spark] class HighlyCompressedMapStatus private (
-    private[this] var loc: BlockManagerId,
-    private[this] var numNonEmptyBlocks: Int,
-    private[this] var emptyBlocks: RoaringBitmap,
-    private[this] var avgSize: Long,
-    private[this] var hugeBlockSizes: scala.collection.Map[Int, Byte],
-    private[this] var _mapTaskId: Long)
+private[spark] class HighlyCompressedMapStatus private(
+                                                        private[this] var loc: BlockManagerId,
+                                                        private[this] var numNonEmptyBlocks: Int,
+                                                        private[this] var emptyBlocks: RoaringBitmap,
+                                                        private[this] var avgSize: Long,
+                                                        private[this] var hugeBlockSizes: scala.collection.Map[Int, Byte],
+                                                        private[this] var _mapTaskId: Long)
   extends MapStatus with Externalizable {
 
   // loc could be null when the default constructor is called during deserialization
@@ -187,7 +187,7 @@ private[spark] class HighlyCompressedMapStatus private (
     || numNonEmptyBlocks == 0 || _mapTaskId > 0,
     "Average size can only be zero for map stages that produced no output")
 
-  protected def this() = this(null, -1, null, -1, null, -1)  // For deserialization only
+  protected def this() = this(null, -1, null, -1, null, -1) // For deserialization only
 
   override def location: BlockManagerId = loc
 
@@ -241,9 +241,9 @@ private[spark] class HighlyCompressedMapStatus private (
 
 private[spark] object HighlyCompressedMapStatus {
   def apply(
-      loc: BlockManagerId,
-      uncompressedSizes: Array[Long],
-      mapTaskId: Long): HighlyCompressedMapStatus = {
+             loc: BlockManagerId,
+             uncompressedSizes: Array[Long],
+             mapTaskId: Long): HighlyCompressedMapStatus = {
     // We must keep track of which blocks are empty so that we don't report a zero-sized
     // block as being non-empty (or vice-versa) when using the average block size.
     var i = 0

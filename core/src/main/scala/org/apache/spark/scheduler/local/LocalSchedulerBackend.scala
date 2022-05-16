@@ -46,11 +46,11 @@ private case class StopExecutor()
  * to prevent deadlock between [[LocalSchedulerBackend]] and the [[TaskSchedulerImpl]].
  */
 private[spark] class LocalEndpoint(
-    override val rpcEnv: RpcEnv,
-    userClassPath: Seq[URL],
-    scheduler: TaskSchedulerImpl,
-    executorBackend: LocalSchedulerBackend,
-    private val totalCores: Int)
+                                    override val rpcEnv: RpcEnv,
+                                    userClassPath: Seq[URL],
+                                    scheduler: TaskSchedulerImpl,
+                                    executorBackend: LocalSchedulerBackend,
+                                    private val totalCores: Int)
   extends ThreadSafeRpcEndpoint with Logging {
 
   private var freeCores = totalCores
@@ -101,9 +101,9 @@ private[spark] class LocalEndpoint(
  * Executor (created by the [[LocalSchedulerBackend]]) running locally.
  */
 private[spark] class LocalSchedulerBackend(
-    conf: SparkConf,
-    scheduler: TaskSchedulerImpl,
-    val totalCores: Int)
+                                            conf: SparkConf,
+                                            scheduler: TaskSchedulerImpl,
+                                            val totalCores: Int)
   extends SchedulerBackend with ExecutorBackend with Logging {
 
   private val appId = "local-" + System.currentTimeMillis
@@ -112,6 +112,7 @@ private[spark] class LocalSchedulerBackend(
   private val listenerBus = scheduler.sc.listenerBus
   private val launcherBackend = new LauncherBackend() {
     override def conf: SparkConf = LocalSchedulerBackend.this.conf
+
     override def onStopRequest(): Unit = stop(SparkAppHandle.State.KILLED)
   }
 
@@ -152,7 +153,7 @@ private[spark] class LocalSchedulerBackend(
     scheduler.conf.getInt("spark.default.parallelism", totalCores)
 
   override def killTask(
-      taskId: Long, executorId: String, interruptThread: Boolean, reason: String): Unit = {
+                         taskId: Long, executorId: String, interruptThread: Boolean, reason: String): Unit = {
     localEndpoint.send(KillTask(taskId, interruptThread, reason))
   }
 

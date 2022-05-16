@@ -38,17 +38,18 @@ import org.apache.spark.util.Utils
  * A [[SchedulerBackend]] implementation for Spark's standalone cluster manager.
  */
 private[spark] class StandaloneSchedulerBackend(
-    scheduler: TaskSchedulerImpl,
-    sc: SparkContext,
-    masters: Array[String])
+                                                 scheduler: TaskSchedulerImpl,
+                                                 sc: SparkContext,
+                                                 masters: Array[String])
   extends CoarseGrainedSchedulerBackend(scheduler, sc.env.rpcEnv)
-  with StandaloneAppClientListener
-  with Logging {
+    with StandaloneAppClientListener
+    with Logging {
 
   private[spark] var client: StandaloneAppClient = null
   private val stopping = new AtomicBoolean(false)
   private val launcherBackend = new LauncherBackend() {
     override protected def conf: SparkConf = sc.conf
+
     override protected def onStopRequest(): Unit = stop(SparkAppHandle.State.KILLED)
   }
 
@@ -94,11 +95,11 @@ private[spark] class StandaloneSchedulerBackend(
     // compute-classpath.{cmd,sh} and makes all needed jars available to child processes
     // when the assembly is built with the "*-provided" profiles enabled.
     val testingClassPath =
-      if (sys.props.contains(IS_TESTING.key)) {
-        sys.props("java.class.path").split(java.io.File.pathSeparator).toSeq
-      } else {
-        Nil
-      }
+    if (sys.props.contains(IS_TESTING.key)) {
+      sys.props("java.class.path").split(java.io.File.pathSeparator).toSeq
+    } else {
+      Nil
+    }
 
     // Start executors with a few necessary configs for registering with the scheduler
     val sparkJavaOpts = Utils.sparkJavaOpts(conf, SparkConf.isExecutorStartupConf)
@@ -110,11 +111,11 @@ private[spark] class StandaloneSchedulerBackend(
     // If we're using dynamic allocation, set our initial executor limit to 0 for now.
     // ExecutorAllocationManager will send the real initial limit to the Master later.
     val initialExecutorLimit =
-      if (Utils.isDynamicAllocationEnabled(conf)) {
-        Some(0)
-      } else {
-        None
-      }
+    if (Utils.isDynamicAllocationEnabled(conf)) {
+      Some(0)
+    } else {
+      None
+    }
     val executorResourceReqs = ResourceUtils.parseResourceRequirements(conf,
       config.SPARK_EXECUTOR_PREFIX)
     val appDesc = ApplicationDescription(sc.appName, maxCores, sc.executorMemory, command,
@@ -160,16 +161,16 @@ private[spark] class StandaloneSchedulerBackend(
   }
 
   override def executorAdded(fullId: String, workerId: String, hostPort: String, cores: Int,
-    memory: Int): Unit = {
+                             memory: Int): Unit = {
     logInfo("Granted executor ID %s on hostPort %s with %d core(s), %s RAM".format(
       fullId, hostPort, cores, Utils.megabytesToString(memory)))
   }
 
   override def executorRemoved(
-      fullId: String,
-      message: String,
-      exitStatus: Option[Int],
-      workerHost: Option[String]): Unit = {
+                                fullId: String,
+                                message: String,
+                                exitStatus: Option[Int],
+                                workerHost: Option[String]): Unit = {
     val reason: ExecutorLossReason = exitStatus match {
       case Some(code) => ExecutorExited(code, exitCausedByApp = true, message)
       case None => ExecutorProcessLost(message, workerHost)
@@ -179,7 +180,7 @@ private[spark] class StandaloneSchedulerBackend(
   }
 
   override def executorDecommissioned(fullId: String,
-      decommissionInfo: ExecutorDecommissionInfo): Unit = {
+                                      decommissionInfo: ExecutorDecommissionInfo): Unit = {
     logInfo(s"Asked to decommission executor $fullId")
     val execId = fullId.split("/")(1)
     decommissionExecutors(
@@ -211,7 +212,7 @@ private[spark] class StandaloneSchedulerBackend(
    * @return whether the request is acknowledged.
    */
   protected override def doRequestTotalExecutors(
-      resourceProfileToTotalExecs: Map[ResourceProfile, Int]): Future[Boolean] = {
+                                                  resourceProfileToTotalExecs: Map[ResourceProfile, Int]): Future[Boolean] = {
     // resources profiles not supported
     Option(client) match {
       case Some(c) =>
@@ -225,6 +226,7 @@ private[spark] class StandaloneSchedulerBackend(
 
   /**
    * Kill the given list of executors through the Master.
+   *
    * @return whether the kill request is acknowledged.
    */
   protected override def doKillExecutors(executorIds: Seq[String]): Future[Boolean] = {
