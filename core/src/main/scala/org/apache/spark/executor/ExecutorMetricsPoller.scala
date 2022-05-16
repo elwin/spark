@@ -43,15 +43,16 @@ import org.apache.spark.util.{ThreadUtils, Utils}
  * tasks. If there are no heartbeats during the task, we still get the metrics polled
  * for the task.
  *
- * @param memoryManager the memory manager used by the executor.
+ * @param memoryManager   the memory manager used by the executor.
  * @param pollingInterval the polling interval in milliseconds.
  */
 private[spark] class ExecutorMetricsPoller(
-    memoryManager: MemoryManager,
-    pollingInterval: Long,
-    executorMetricsSource: Option[ExecutorMetricsSource]) extends Logging {
+                                            memoryManager: MemoryManager,
+                                            pollingInterval: Long,
+                                            executorMetricsSource: Option[ExecutorMetricsSource]) extends Logging {
 
   type StageKey = (Int, Int)
+
   // Task Count and Metric Peaks
   private[executor] case class TCMP(count: AtomicLong, peaks: AtomicLongArray)
 
