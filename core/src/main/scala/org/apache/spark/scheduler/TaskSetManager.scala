@@ -35,6 +35,8 @@ import org.apache.spark.scheduler.SchedulingMode._
 import org.apache.spark.util.{AccumulatorV2, Clock, LongAccumulator, SystemClock, Utils}
 import org.apache.spark.util.collection.MedianHeap
 
+import scala.collection.mutable
+
 /**
  * Schedules the tasks within a single TaskSet in the TaskSchedulerImpl. This class keeps track of
  * each task, retries tasks if they fail (up to a limited number of times), and
@@ -72,6 +74,8 @@ private[spark] class TaskSetManager(
   val ser = env.closureSerializer.newInstance()
 
   val tasks = taskSet.tasks
+  val queue = new mutable.Queue[Int]()
+
   private val isShuffleMapTasks = tasks(0).isInstanceOf[ShuffleMapTask]
   private[scheduler] val partitionToIndex = tasks.zipWithIndex
     .map { case (t, idx) => t.partitionId -> idx }.toMap
@@ -252,6 +256,8 @@ private[spark] class TaskSetManager(
                                      resolveRacks: Boolean = true,
                                      speculatable: Boolean = false): Unit = {
     // A zombie TaskSetManager may reach here while handling failed task.
+    queue += index
+
     if (isZombie) return
     val pendingTaskSetToAddTo = if (speculatable) pendingSpeculatableTasks else pendingTasks
     for (loc <- tasks(index).preferredLocations) {
@@ -431,61 +437,23 @@ private[spark] class TaskSetManager(
                      maxLocality: TaskLocality.TaskLocality,
                      taskResourceAssignments: Map[String, ResourceInformation] = Map.empty)
   : (Option[TaskDescription], Boolean, Int) = {
-    val offerExcluded = taskSetExcludelistHelperOpt.exists { excludeList =>
-      excludeList.isNodeExcludedForTaskSet(host) ||
-        excludeList.isExecutorExcludedForTaskSet(execId)
+    if (queue.isEmpty) {
+      return (None, false, -1)
     }
-    if (!isZombie && !offerExcluded) {
-      val curTime = clock.getTimeMillis()
 
-      var allowedLocality = maxLocality
+    val index = queue.dequeue()
+    val curTime = clock.getTimeMillis()
+    val taskDescription = prepareLaunchingTask(
+      execId,
+      host,
+      index = index,
+      maxLocality,
+      speculative = false,
+      taskResourceAssignments,
+      curTime,
+    )
 
-      if (maxLocality != TaskLocality.NO_PREF) {
-        allowedLocality = getAllowedLocalityLevel(curTime)
-        if (allowedLocality > maxLocality) {
-          // We're not allowed to search for farther-away tasks
-          allowedLocality = maxLocality
-        }
-      }
-
-      var dequeuedTaskIndex: Option[Int] = None
-      val taskDescription =
-        dequeueTask(execId, host, allowedLocality)
-          .map { case (index, taskLocality, speculative) =>
-            dequeuedTaskIndex = Some(index)
-            if (legacyLocalityWaitReset && maxLocality != TaskLocality.NO_PREF) {
-              resetDelayScheduleTimer(Some(taskLocality))
-            }
-            if (isBarrier) {
-              barrierPendingLaunchTasks(index) =
-                BarrierPendingLaunchTask(
-                  execId,
-                  host,
-                  index,
-                  taskLocality,
-                  taskResourceAssignments)
-              // return null since the TaskDescription for the barrier task is not ready yet
-              null
-            } else {
-              prepareLaunchingTask(
-                execId,
-                host,
-                index,
-                taskLocality,
-                speculative,
-                taskResourceAssignments,
-                curTime)
-            }
-          }
-      val hasPendingTasks = pendingTasks.all.nonEmpty || pendingSpeculatableTasks.all.nonEmpty
-      val hasScheduleDelayReject =
-        taskDescription.isEmpty &&
-          maxLocality == TaskLocality.ANY &&
-          hasPendingTasks
-      (taskDescription, hasScheduleDelayReject, dequeuedTaskIndex.getOrElse(-1))
-    } else {
-      (None, false, -1)
-    }
+    (Some(taskDescription), false, index)
   }
 
   def prepareLaunchingTask(

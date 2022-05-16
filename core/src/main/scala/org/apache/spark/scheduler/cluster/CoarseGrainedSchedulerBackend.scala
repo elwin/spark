@@ -173,7 +173,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   r.release(v.addresses)
                 }
               }
-              makeOffers(executorId)
+              if (taskQueue.isDefined) {
+                time(makeOffers(executorId, taskQueue.get), "makeOffers")
+              }
             case None =>
               // Ignoring the update since we don't know about the executor.
               logWarning(s"Ignored task status update ($taskId state $state) " +
@@ -182,7 +184,15 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         }
 
       case ReviveOffers =>
-        makeOffers()
+        for ((executorId, executor) <- executorDataMap) {
+          if (executor.assignedQueue.isEmpty) {
+            makeQueue(executorId)
+          }
+
+          if (executor.assignedQueue.isDefined && !isExecutorActive(executorId)) {
+            time(makeOffers(executorId, executor.assignedQueue.get), "makeOffers")
+          }
+        }
 
       case KillTask(taskId, executorId, interruptThread, reason) =>
         executorDataMap.get(executorId) match {
@@ -226,7 +236,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         executorDataMap.get(executorId).foreach { data =>
           data.freeCores = data.totalCores
         }
-        makeOffers(executorId)
+        makeQueue(executorId)
 
       case MiscellaneousProcessAdded(time: Long,
       processId: String, info: MiscellaneousProcessDetails) =>
@@ -327,27 +337,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         logError(s"Received unexpected ask ${e}")
     }
 
-    // Make fake resource offers on all executors
-    private def makeOffers(): Unit = {
-      // Make sure no executor is killed while some task is launching on it
-      val taskDescs = withLock {
-        // Filter out executors under killing
-        val activeExecutors = executorDataMap.filterKeys(isExecutorActive)
-        val workOffers = activeExecutors.map {
-          case (id, executorData) =>
-            new WorkerOffer(id, executorData.executorHost, executorData.freeCores,
-              Some(executorData.executorAddress.hostPort),
-              executorData.resourcesInfo.map { case (rName, rInfo) =>
-                (rName, rInfo.availableAddrs.toBuffer)
-              }, executorData.resourceProfileId)
-        }.toIndexedSeq
-        scheduler.resourceOffers(workOffers, true)
-      }
-      if (taskDescs.nonEmpty) {
-        launchTasks(taskDescs)
-      }
-    }
-
     override def onDisconnected(remoteAddress: RpcAddress): Unit = {
       addressToExecutorId
         .get(remoteAddress)
@@ -365,8 +354,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
           executorData.executorEndpoint.send(SetTaskQueue(Some(taskSet.name)))
           executorData.assignedQueue = Some(taskSet.name)
-
-          //          makeOffers(executorId, taskSet.name)
           return
         }
 
@@ -378,63 +365,66 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     // Make fake resource offers on just one executor
-    private def makeOffers(executorId: String): Unit = {
+    private def makeOffers(executorId: String, taskQueue: String): Unit = {
       // Make sure no executor is killed while some task is launching on it
-      val taskDescs = withLock {
+      val taskDesc = withLock {
         // Filter out executors under killing
-        if (isExecutorActive(executorId)) {
-          val executorData = executorDataMap(executorId)
-          val workOffers = IndexedSeq(
-            new WorkerOffer(executorId, executorData.executorHost, executorData.freeCores,
-              Some(executorData.executorAddress.hostPort),
-              executorData.resourcesInfo.map { case (rName, rInfo) =>
-                (rName, rInfo.availableAddrs.toBuffer)
-              }, executorData.resourceProfileId))
-          time(scheduler.resourceOffers(workOffers, false), "resourceOffers")
-        } else {
-          Seq.empty
-        }
+        if (!isExecutorActive(executorId)) return;
+
+        val executorData = executorDataMap(executorId)
+        val offer = WorkerOffer(
+          executorId = executorId,
+          host = executorData.executorHost,
+          cores = executorData.freeCores,
+          address = Some(executorData.executorAddress.hostPort),
+          resources = executorData.resourcesInfo.map { case (rName, rInfo) =>
+            (rName, rInfo.availableAddrs.toBuffer)
+          }, resourceProfileId = executorData.resourceProfileId
+        )
+        time(scheduler.nextOffer(offer, taskQueue), "nextOffer")
       }
-      if (taskDescs.nonEmpty) {
-        launchTasks(taskDescs)
+
+      if (taskDesc.isDefined) {
+        time(launchTask(taskDesc.get), "launchTask")
+      } else {
+        makeQueue(executorId)
       }
     }
 
-    // Launch tasks returned by a set of resource offers
-    private def launchTasks(tasks: Seq[Seq[TaskDescription]]): Unit = {
-      for (task <- tasks.flatten) {
-        val serializedTask = TaskDescription.encode(task)
-        if (serializedTask.limit() >= maxRpcMessageSize) {
-          Option(scheduler.taskIdToTaskSetManager.get(task.taskId)).foreach { taskSetMgr =>
-            try {
-              var msg = "Serialized task %s:%d was %d bytes, which exceeds max allowed: " +
-                s"${RPC_MESSAGE_MAX_SIZE.key} (%d bytes). Consider increasing " +
-                s"${RPC_MESSAGE_MAX_SIZE.key} or using broadcast variables for large values."
-              msg = msg.format(task.taskId, task.index, serializedTask.limit(), maxRpcMessageSize)
-              taskSetMgr.abort(msg)
-            } catch {
-              case e: Exception => logError("Exception in error callback", e)
-            }
+    private def launchTask(task: TaskDescription): Unit = {
+      val serializedTask = time(TaskDescription.encode(task), "encode")
+      if (serializedTask.limit() >= maxRpcMessageSize) {
+        Option(scheduler.taskIdToTaskSetManager.get(task.taskId)).foreach { taskSetMgr =>
+          try {
+            var msg = "Serialized task %s:%d was %d bytes, which exceeds max allowed: " +
+              s"${RPC_MESSAGE_MAX_SIZE.key} (%d bytes). Consider increasing " +
+              s"${RPC_MESSAGE_MAX_SIZE.key} or using broadcast variables for large values."
+            msg = msg.format(task.taskId, task.index, serializedTask.limit(), maxRpcMessageSize)
+            taskSetMgr.abort(msg)
+          } catch {
+            case e: Exception => logError("Exception in error callback", e)
           }
         }
-        else {
-          val executorData = executorDataMap(task.executorId)
-          // Do resources allocation here. The allocated resources will get released after the task
-          // finishes.
-          val rpId = executorData.resourceProfileId
-          val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
-          val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
-          executorData.freeCores -= taskCpus
-          task.resources.foreach { case (rName, rInfo) =>
-            assert(executorData.resourcesInfo.contains(rName))
-            executorData.resourcesInfo(rName).acquire(rInfo.addresses)
-          }
-
-          logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
-            s"${executorData.executorHost}.")
-
-          time(executorData.executorEndpoint.send(LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch")
+      }
+      else {
+        val executorData = executorDataMap(task.executorId)
+        // Do resources allocation here. The allocated resources will get released after the task
+        // finishes.
+        val rpId = executorData.resourceProfileId
+        val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
+        val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
+        executorData.freeCores -= taskCpus
+        task.resources.foreach { case (rName, rInfo) =>
+          assert(executorData.resourcesInfo.contains(rName))
+          executorData.resourcesInfo(rName).acquire(rInfo.addresses)
         }
+
+        logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
+          s"${executorData.executorHost}.")
+
+        time(executorData.executorEndpoint.send(
+          LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch"
+        )
       }
     }
 

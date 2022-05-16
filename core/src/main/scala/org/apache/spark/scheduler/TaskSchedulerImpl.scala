@@ -494,6 +494,45 @@ private[spark] class TaskSchedulerImpl(
     }
   }
 
+  def nextOffer(offer: WorkerOffer, taskQueue: String): Option[TaskDescription] = synchronized {
+    if (!hostToExecutors.contains(offer.host)) {
+      hostToExecutors(offer.host) = new mutable.HashSet[String]()
+    }
+    if (!executorIdToRunningTaskIds.contains(offer.executorId)) {
+      hostToExecutors(offer.host) += offer.executorId
+      executorAdded(offer.executorId, offer.host)
+      executorIdToHost(offer.executorId) = offer.host
+      executorIdToRunningTaskIds(offer.executorId) = mutable.HashSet[Long]()
+    }
+
+
+    val taskSetManager = rootPool.getSchedulableByName(taskQueue).asInstanceOf[TaskSetManager]
+    if (taskSetManager == null) {
+      logInfo("no taskSetManager defined")
+      return None
+    }
+
+    val taskResourceAssignments = mutable.HashMap[String, ResourceInformation]().toMap
+
+    val (taskDesc, rejected, _) = taskSetManager.resourceOffer(
+      execId = offer.executorId,
+      host = offer.host,
+      maxLocality = TaskLocality.ANY,
+      taskResourceAssignments = taskResourceAssignments,
+    )
+
+    if (rejected) {
+      throw new Exception("ouf, offer rejected")
+    } else if (taskDesc.isDefined) {
+      addRunningTask(taskDesc.get.taskId, taskDesc.get.executorId, taskSetManager)
+      return taskDesc
+    }
+
+    logInfo("no task found :(")
+
+    return None
+  }
+
   /**
    * Called by cluster manager to offer resources on workers. We respond by asking our active task
    * sets for tasks in order of priority. We fill each node with tasks in a round-robin manner so
