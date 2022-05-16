@@ -70,6 +70,8 @@ private[spark] class CoarseGrainedExecutorBackend(
 
   private var _resources = Map.empty[String, ResourceInformation]
 
+  private var currentTaskQueue: Option[String] = None
+
   /**
    * Map each taskId to the information about the resource allocated to it, Please refer to
    * [[ResourceInformation]] for specifics.
@@ -175,6 +177,10 @@ private[spark] class CoarseGrainedExecutorBackend(
           exitExecutor(1, "Unable to create executor due to " + e.getMessage, e)
       }
 
+    case SetTaskQueue(taskQueue) =>
+      currentTaskQueue = taskQueue
+      logInfo(s"Set task queue to $taskQueue")
+
     case LaunchTask(data) =>
       if (executor == null) {
         exitExecutor(1, "Received LaunchTask command but executor was null")
@@ -262,7 +268,7 @@ private[spark] class CoarseGrainedExecutorBackend(
       s"""elw3: {"type": "status_update", "task_id": $taskId, "state": "$state", "timestamp": ${System.nanoTime()}}"""
     )
     val resources = taskResources.getOrElse(taskId, Map.empty[String, ResourceInformation])
-    val msg = StatusUpdate(executorId, taskId, state, data, resources)
+    val msg = StatusUpdate(executorId, taskId, state, currentTaskQueue, data, resources)
     if (TaskState.isFinished(state)) {
       taskResources.remove(taskId)
     }

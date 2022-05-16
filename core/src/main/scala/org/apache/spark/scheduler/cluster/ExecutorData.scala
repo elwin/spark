@@ -42,6 +42,7 @@ private[cluster] class ExecutorData(
                                      override val attributes: Map[String, String],
                                      override val resourcesInfo: Map[String, ExecutorResourceInfo],
                                      override val resourceProfileId: Int,
-                                     val registrationTs: Long
+                                     val registrationTs: Long,
+                                     var assignedQueue: Option[String] = None,
                                    ) extends ExecutorInfo(executorHost, totalCores, logUrlMap, attributes,
   resourcesInfo, resourceProfileId)

@@ -154,7 +154,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     override def receive: PartialFunction[Any, Unit] = {
-      case StatusUpdate(executorId, taskId, state, data, resources) =>
+      case RequestTaskQueue(executorId) => makeQueue(executorId)
+
+
+      case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
         if (TaskState.isFinished(state)) {
           time(time({}, "nothing"), "time")
@@ -352,6 +355,26 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           ExecutorProcessLost("Remote RPC client disassociated. Likely due to " +
             "containers exceeding thresholds, or network issues. Check driver logs for WARN " +
             "messages.")))
+    }
+
+    private def makeQueue(executorId: String): Unit = {
+      withLock {
+
+        val executorData = executorDataMap(executorId)
+        for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
+          logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
+          executorData.executorEndpoint.send(SetTaskQueue(Some(taskSet.name)))
+          executorData.assignedQueue = Some(taskSet.name)
+
+          //          makeOffers(executorId, taskSet.name)
+          return
+        }
+
+
+        logInfo("no more task sets :(")
+        executorData.executorEndpoint.send(SetTaskQueue(None))
+        executorData.assignedQueue = None
+      }
     }
 
     // Make fake resource offers on just one executor

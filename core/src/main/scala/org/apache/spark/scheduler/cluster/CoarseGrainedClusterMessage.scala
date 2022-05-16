@@ -43,6 +43,8 @@ private[spark] object CoarseGrainedClusterMessages {
   // Driver to executors
   case class LaunchTask(data: SerializableBuffer) extends CoarseGrainedClusterMessage
 
+  case class SetTaskQueue(taskQueue: Option[String]) extends CoarseGrainedClusterMessage
+
   case class KillTask(taskId: Long, executor: String, interruptThread: Boolean, reason: String)
     extends CoarseGrainedClusterMessage
 
@@ -56,6 +58,10 @@ private[spark] object CoarseGrainedClusterMessages {
     extends CoarseGrainedClusterMessage
 
   // Executors to driver
+  case class RequestTaskQueue(executorId: String) extends CoarseGrainedClusterMessage
+
+  case class RequestTask(executorId: String, taskQueue: String) extends CoarseGrainedClusterMessage
+
   case class RegisterExecutor(
                                executorId: String,
                                executorRef: RpcEndpointRef,
@@ -73,15 +79,16 @@ private[spark] object CoarseGrainedClusterMessages {
                            executorId: String,
                            taskId: Long,
                            state: TaskState,
+                           taskQueue: Option[String],
                            data: SerializableBuffer,
                            resources: Map[String, ResourceInformation] = Map.empty)
     extends CoarseGrainedClusterMessage
 
   object StatusUpdate {
     /** Alternate factory method that takes a ByteBuffer directly for the data field */
-    def apply(executorId: String, taskId: Long, state: TaskState, data: ByteBuffer,
-              resources: Map[String, ResourceInformation]): StatusUpdate = {
-      StatusUpdate(executorId, taskId, state, new SerializableBuffer(data), resources)
+    def apply(executorId: String, taskId: Long, state: TaskState, taskQueue: Option[String],
+              data: ByteBuffer, resources: Map[String, ResourceInformation]): StatusUpdate = {
+      StatusUpdate(executorId, taskId, state, taskQueue, new SerializableBuffer(data), resources)
     }
   }
 
