@@ -157,6 +157,10 @@ private[spark] class LocalSchedulerBackend(
   }
 
   override def statusUpdate(taskId: Long, state: TaskState, serializedData: ByteBuffer): Unit = {
+    logInfo(
+      s"""elw3: {"type": "status_update", "task_id": $taskId, "state": "$state", "timestamp": ${System.nanoTime()}}"""
+    )
+
     localEndpoint.send(StatusUpdate(taskId, state, serializedData))
   }
 

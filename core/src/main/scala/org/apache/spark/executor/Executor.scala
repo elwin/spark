@@ -439,6 +439,8 @@ private[spark] class Executor(
     }
 
     override def run(): Unit = {
+      val initStartTime = System.nanoTime()
+
       setMDCForTask(taskName, mdcProperties)
       threadId = Thread.currentThread.getId
       Thread.currentThread.setName(threadName)
@@ -468,6 +470,10 @@ private[spark] class Executor(
           taskDescription.serializedTask, Thread.currentThread.getContextClassLoader)
         task.localProperties = taskDescription.properties
         task.setTaskMemoryManager(taskMemoryManager)
+
+        logInfo(
+          s"""elw3: {"type": "task_size", "task_id": $taskId, "size": ${taskDescription.serializedTask.position()}, "timestamp": ${System.nanoTime}}"""
+        )
 
         // If this task has been killed before we deserialized it, let's quit now. Otherwise,
         // continue executing the task.
@@ -543,6 +549,14 @@ private[spark] class Executor(
         val taskFinishCpu = if (threadMXBean.isCurrentThreadCpuTimeSupported) {
           threadMXBean.getCurrentThreadCpuTime
         } else 0L
+
+        logInfo(
+          s"""elw3: {"type": "job_duration", "task_id": $taskId, "duration": ${taskFinishNs - taskStartTimeNs}, "timestamp": ${System.nanoTime}}"""
+        )
+
+        logInfo(
+          s"""elw3: {"type": "initialization", "task_id": $taskId, "duration": ${taskStartTimeNs - initStartTime}, "timestamp": ${System.nanoTime}}"""
+        )
 
         // If the task has been killed, let's fail it.
         task.context.killTaskIfInterrupted()
