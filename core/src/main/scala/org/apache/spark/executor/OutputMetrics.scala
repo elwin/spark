@@ -38,7 +38,7 @@ object DataWriteMethod extends Enumeration with Serializable {
  * A collection of accumulators that represents metrics about writing data to external systems.
  */
 @DeveloperApi
-class OutputMetrics private[spark] () extends Serializable {
+class OutputMetrics private[spark]() extends Serializable {
   private[executor] val _bytesWritten = new LongAccumulator
   private[executor] val _recordsWritten = new LongAccumulator
 
@@ -53,5 +53,6 @@ class OutputMetrics private[spark] () extends Serializable {
   def recordsWritten: Long = _recordsWritten.sum
 
   private[spark] def setBytesWritten(v: Long): Unit = _bytesWritten.setValue(v)
+
   private[spark] def setRecordsWritten(v: Long): Unit = _recordsWritten.setValue(v)
 }

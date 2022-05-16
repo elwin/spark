@@ -24,13 +24,14 @@ import scala.util.matching.Regex
 import org.apache.spark.internal.Logging
 
 private[spark] class ExecutorLogUrlHandler(logUrlPattern: Option[String]) extends Logging {
+
   import ExecutorLogUrlHandler._
 
   private val informedForMissingAttributes = new AtomicBoolean(false)
 
   def applyPattern(
-      logUrls: Map[String, String],
-      attributes: Map[String, String]): Map[String, String] = {
+                    logUrls: Map[String, String],
+                    attributes: Map[String, String]): Map[String, String] = {
     logUrlPattern match {
       case Some(pattern) => doApplyPattern(logUrls, attributes, pattern)
       case None => logUrls
@@ -38,9 +39,9 @@ private[spark] class ExecutorLogUrlHandler(logUrlPattern: Option[String]) extend
   }
 
   private def doApplyPattern(
-      logUrls: Map[String, String],
-      attributes: Map[String, String],
-      urlPattern: String): Map[String, String] = {
+                              logUrls: Map[String, String],
+                              attributes: Map[String, String],
+                              urlPattern: String): Map[String, String] = {
     // Relation between pattern {{FILE_NAME}} and attribute {{LOG_FILES}}
     // Given that this class don't know which types of log files can be provided
     // from resource manager, we require resource manager to provide available types of log
@@ -78,9 +79,9 @@ private[spark] class ExecutorLogUrlHandler(logUrlPattern: Option[String]) extend
   }
 
   private def logFailToRenewLogUrls(
-      reason: String,
-      allPatterns: Set[String],
-      allAttributes: Set[String]): Unit = {
+                                     reason: String,
+                                     allPatterns: Set[String],
+                                     allAttributes: Set[String]): Unit = {
     if (informedForMissingAttributes.compareAndSet(false, true)) {
       logInfo(s"Fail to renew executor log urls: $reason. Required: $allPatterns / " +
         s"available: $allAttributes. Falling back to show app's original log urls.")

@@ -43,7 +43,7 @@ import org.apache.spark.util._
  * be sent to the driver.
  */
 @DeveloperApi
-class TaskMetrics private[spark] () extends Serializable {
+class TaskMetrics private[spark]() extends Serializable {
   // Each metric is internally represented as an accumulator
   private val _executorDeserializeTime = new LongAccumulator
   private val _executorDeserializeCpuTime = new LongAccumulator
@@ -129,22 +129,35 @@ class TaskMetrics private[spark] () extends Serializable {
   // Setters and increment-ers
   private[spark] def setExecutorDeserializeTime(v: Long): Unit =
     _executorDeserializeTime.setValue(v)
+
   private[spark] def setExecutorDeserializeCpuTime(v: Long): Unit =
     _executorDeserializeCpuTime.setValue(v)
+
   private[spark] def setExecutorRunTime(v: Long): Unit = _executorRunTime.setValue(v)
+
   private[spark] def setExecutorCpuTime(v: Long): Unit = _executorCpuTime.setValue(v)
+
   private[spark] def setResultSize(v: Long): Unit = _resultSize.setValue(v)
+
   private[spark] def setJvmGCTime(v: Long): Unit = _jvmGCTime.setValue(v)
+
   private[spark] def setResultSerializationTime(v: Long): Unit =
     _resultSerializationTime.setValue(v)
+
   private[spark] def setPeakExecutionMemory(v: Long): Unit = _peakExecutionMemory.setValue(v)
+
   private[spark] def incMemoryBytesSpilled(v: Long): Unit = _memoryBytesSpilled.add(v)
+
   private[spark] def incDiskBytesSpilled(v: Long): Unit = _diskBytesSpilled.add(v)
+
   private[spark] def incPeakExecutionMemory(v: Long): Unit = _peakExecutionMemory.add(v)
+
   private[spark] def incUpdatedBlockStatuses(v: (BlockId, BlockStatus)): Unit =
     _updatedBlockStatuses.add(v)
+
   private[spark] def setUpdatedBlockStatuses(v: java.util.List[(BlockId, BlockStatus)]): Unit =
     _updatedBlockStatuses.setValue(v)
+
   private[spark] def setUpdatedBlockStatuses(v: Seq[(BlockId, BlockStatus)]): Unit =
     _updatedBlockStatuses.setValue(v.asJava)
 
@@ -208,6 +221,7 @@ class TaskMetrics private[spark] () extends Serializable {
 
 
   import InternalAccumulator._
+
   @transient private[spark] lazy val nameToAccums = LinkedHashMap(
     EXECUTOR_DESERIALIZE_TIME -> _executorDeserializeTime,
     EXECUTOR_DESERIALIZE_CPU_TIME -> _executorDeserializeCpuTime,
@@ -269,6 +283,7 @@ class TaskMetrics private[spark] () extends Serializable {
 
 
 private[spark] object TaskMetrics extends Logging {
+
   import InternalAccumulator._
 
   /**

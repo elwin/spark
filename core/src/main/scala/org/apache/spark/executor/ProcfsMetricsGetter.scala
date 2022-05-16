@@ -32,12 +32,12 @@ import org.apache.spark.util.Utils
 
 
 private[spark] case class ProcfsMetrics(
-    jvmVmemTotal: Long,
-    jvmRSSTotal: Long,
-    pythonVmemTotal: Long,
-    pythonRSSTotal: Long,
-    otherVmemTotal: Long,
-    otherRSSTotal: Long)
+                                         jvmVmemTotal: Long,
+                                         jvmRSSTotal: Long,
+                                         pythonVmemTotal: Long,
+                                         pythonRSSTotal: Long,
+                                         otherVmemTotal: Long,
+                                         otherRSSTotal: Long)
 
 // Some of the ideas here are taken from the ProcfsBasedProcessTree class in hadoop
 // project.
@@ -50,7 +50,7 @@ private[spark] class ProcfsMetricsGetter(procfsDir: String = "/proc/") extends L
 
   private lazy val isProcfsAvailable: Boolean = {
     if (testing) {
-       true
+      true
     }
     else {
       val procDirExists = Try(Files.exists(Paths.get(procfsDir))).recover {
@@ -110,7 +110,7 @@ private[spark] class ProcfsMetricsGetter(procfsDir: String = "/proc/") extends L
     ptree += pid
     val queue = mutable.Queue.empty[Int]
     queue += pid
-    while ( !queue.isEmpty ) {
+    while (!queue.isEmpty) {
       val p = queue.dequeue()
       val c = getChildPids(p)
       if (!c.isEmpty) {
@@ -126,12 +126,14 @@ private[spark] class ProcfsMetricsGetter(procfsDir: String = "/proc/") extends L
       val builder = new ProcessBuilder("pgrep", "-P", pid.toString)
       val process = builder.start()
       val childPidsInInt = mutable.ArrayBuffer.empty[Int]
+
       def appendChildPid(s: String): Unit = {
         if (s != "") {
           logTrace("Found a child pid:" + s)
           childPidsInInt += Integer.parseInt(s)
         }
       }
+
       val stdoutThread = Utils.processStreamByLine("read stdout for pgrep",
         process.getInputStream, appendChildPid)
       val errorStringBuilder = new StringBuilder()
@@ -162,17 +164,19 @@ private[spark] class ProcfsMetricsGetter(procfsDir: String = "/proc/") extends L
 
   // Exposed for testing
   private[executor] def addProcfsMetricsFromOneProcess(
-      allMetrics: ProcfsMetrics,
-      pid: Int): ProcfsMetrics = {
+                                                        allMetrics: ProcfsMetrics,
+                                                        pid: Int): ProcfsMetrics = {
 
     // The computation of RSS and Vmem are based on proc(5):
     // http://man7.org/linux/man-pages/man5/proc.5.html
     try {
       val pidDir = new File(procfsDir, pid.toString)
+
       def openReader(): BufferedReader = {
         val f = new File(new File(procfsDir, pid.toString), procfsStatFile)
         new BufferedReader(new InputStreamReader(new FileInputStream(f), UTF_8))
       }
+
       Utils.tryWithResource(openReader) { in =>
         val procInfo = in.readLine
         val procInfoSplit = procInfo.split(" ")

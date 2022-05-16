@@ -17,26 +17,7 @@
 
 package org.apache.spark.executor
 
-import java.io.{File, NotSerializableException}
-import java.lang.Thread.UncaughtExceptionHandler
-import java.lang.management.ManagementFactory
-import java.net.{URI, URL}
-import java.nio.ByteBuffer
-import java.util.{Locale, Properties}
-import java.util.concurrent._
-import java.util.concurrent.atomic.AtomicBoolean
-import javax.annotation.concurrent.GuardedBy
-import javax.ws.rs.core.UriBuilder
-
-import scala.collection.JavaConverters._
-import scala.collection.immutable
-import scala.collection.mutable.{ArrayBuffer, HashMap, Map, WrappedArray}
-import scala.concurrent.duration._
-import scala.util.control.NonFatal
-
 import com.google.common.util.concurrent.ThreadFactoryBuilder
-import org.slf4j.MDC
-
 import org.apache.spark._
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.internal.Logging
@@ -51,6 +32,23 @@ import org.apache.spark.shuffle.{FetchFailedException, ShuffleBlockPusher}
 import org.apache.spark.storage.{StorageLevel, TaskResultBlockId}
 import org.apache.spark.util._
 import org.apache.spark.util.io.ChunkedByteBuffer
+import org.slf4j.MDC
+
+import java.io.{File, NotSerializableException}
+import java.lang.Thread.UncaughtExceptionHandler
+import java.lang.management.ManagementFactory
+import java.net.{URI, URL}
+import java.nio.ByteBuffer
+import java.util.concurrent._
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.{Locale, Properties}
+import javax.annotation.concurrent.GuardedBy
+import javax.ws.rs.core.UriBuilder
+import scala.collection.JavaConverters._
+import scala.collection.immutable
+import scala.collection.mutable.{ArrayBuffer, HashMap, Map, WrappedArray}
+import scala.concurrent.duration._
+import scala.util.control.NonFatal
 
 /**
  * Spark executor, backed by a threadpool to run tasks.
@@ -60,13 +58,13 @@ import org.apache.spark.util.io.ChunkedByteBuffer
  * except in the case of Mesos fine-grained mode.
  */
 private[spark] class Executor(
-    executorId: String,
-    executorHostname: String,
-    env: SparkEnv,
-    userClassPath: Seq[URL] = Nil,
-    isLocal: Boolean = false,
-    uncaughtExceptionHandler: UncaughtExceptionHandler = new SparkUncaughtExceptionHandler,
-    resources: immutable.Map[String, ResourceInformation])
+                               executorId: String,
+                               executorHostname: String,
+                               env: SparkEnv,
+                               userClassPath: Seq[URL] = Nil,
+                               isLocal: Boolean = false,
+                               uncaughtExceptionHandler: UncaughtExceptionHandler = new SparkUncaughtExceptionHandler,
+                               resources: immutable.Map[String, ResourceInformation])
   extends Logging {
 
   logInfo(s"Starting executor ID $executorId on host $executorHostname")
@@ -88,7 +86,7 @@ private[spark] class Executor(
   // No ip or host:port - just hostname
   Utils.checkHost(executorHostname)
   // must not have port specified.
-  assert (0 == Utils.parseHostPort(executorHostname)._2)
+  assert(0 == Utils.parseHostPort(executorHostname)._2)
 
   // Make sure the local hostname we report matches the cluster scheduler's name for this host
   Utils.setCustomHostname(executorHostname)
@@ -239,11 +237,11 @@ private[spark] class Executor(
   // updateDependencies. This should be done before plugin initialization below
   // because executors search plugins from the class loader and initialize them.
   private val Seq(initialUserJars, initialUserFiles, initialUserArchives) =
-    Seq("jar", "file", "archive").map { key =>
-      conf.getOption(s"spark.app.initial.$key.urls").map { urls =>
-        Map(urls.split(",").map(url => (url, appStartTime)): _*)
-      }.getOrElse(Map.empty)
-    }
+  Seq("jar", "file", "archive").map { key =>
+    conf.getOption(s"spark.app.initial.$key.urls").map { urls =>
+      Map(urls.split(",").map(url => (url, appStartTime)): _*)
+    }.getOrElse(Map.empty)
+  }
   updateDependencies(initialUserFiles, initialUserJars, initialUserArchives)
 
   // Plugins need to load using a class loader that includes the executor's user classpath.
@@ -303,9 +301,10 @@ private[spark] class Executor(
    * Function to kill the running tasks in an executor.
    * This can be called by executor back-ends to kill the
    * tasks instead of taking the JVM down.
+   *
    * @param interruptThread whether to interrupt the task thread
    */
-  def killAllTasks(interruptThread: Boolean, reason: String) : Unit = {
+  def killAllTasks(interruptThread: Boolean, reason: String): Unit = {
     runningTasks.keys().asScala.foreach(t =>
       killTask(t, interruptThread = interruptThread, reason = reason))
   }
@@ -352,9 +351,9 @@ private[spark] class Executor(
   }
 
   class TaskRunner(
-      execBackend: ExecutorBackend,
-      private val taskDescription: TaskDescription,
-      private val plugins: Option[PluginContainer])
+                    execBackend: ExecutorBackend,
+                    private val taskDescription: TaskDescription,
+                    private val plugins: Option[PluginContainer])
     extends Runnable {
 
     val taskId = taskDescription.taskId
@@ -374,7 +373,9 @@ private[spark] class Executor(
     @GuardedBy("TaskRunner.this")
     private var finished = false
 
-    def isFinished: Boolean = synchronized { finished }
+    def isFinished: Boolean = synchronized {
+      finished
+    }
 
     /** How much the JVM process has spent in GC when the task starts to run. */
     @volatile var startGCTime: Long = _
@@ -413,10 +414,10 @@ private[spark] class Executor(
     }
 
     /**
-     *  Utility function to:
+     * Utility function to:
      *    1. Report executor runtime and JVM gc time if possible
-     *    2. Collect accumulator updates
-     *    3. Set the finished flag to true and clear current thread's interrupt status
+     *       2. Collect accumulator updates
+     *       3. Set the finished flag to true and clear current thread's interrupt status
      */
     private def collectAccumulatorsAndResetStatusOnFailure(taskStartTimeNs: Long) = {
       // Report executor runtime and JVM gc time
@@ -653,7 +654,7 @@ private[spark] class Executor(
           execBackend.statusUpdate(taskId, TaskState.KILLED, ser.serialize(reason))
 
         case _: InterruptedException | NonFatal(_) if
-            task != null && task.reasonIfKilled.isDefined =>
+          task != null && task.reasonIfKilled.isDefined =>
           val killReason = task.reasonIfKilled.getOrElse("unknown reason")
           logInfo(s"Executor interrupted and killed $taskName, reason: $killReason")
 
@@ -776,9 +777,9 @@ private[spark] class Executor(
    * if the supervised task never exits.
    */
   private class TaskReaper(
-      taskRunner: TaskRunner,
-      val interruptThread: Boolean,
-      val reason: String)
+                            taskRunner: TaskRunner,
+                            val interruptThread: Boolean,
+                            val reason: String)
     extends Runnable {
 
     private[this] val taskId: Long = taskRunner.taskId
@@ -794,8 +795,11 @@ private[spark] class Executor(
     override def run(): Unit = {
       setMDCForTask(taskRunner.taskName, taskRunner.mdcProperties)
       val startTimeNs = System.nanoTime()
+
       def elapsedTimeNs = System.nanoTime() - startTimeNs
+
       def timeoutExceeded(): Boolean = killTimeoutNs > 0 && elapsedTimeNs > killTimeoutNs
+
       try {
         // Only attempt to kill the task once. If interruptThread = false then a second kill
         // attempt would be a no-op and if interruptThread = true then it may not be safe or
@@ -923,9 +927,9 @@ private[spark] class Executor(
    * SparkContext. Also adds any new JARs we fetched to the class loader.
    */
   private def updateDependencies(
-      newFiles: Map[String, Long],
-      newJars: Map[String, Long],
-      newArchives: Map[String, Long]): Unit = {
+                                  newFiles: Map[String, Long],
+                                  newJars: Map[String, Long],
+                                  newArchives: Map[String, Long]): Unit = {
     lazy val hadoopConf = SparkHadoopUtil.get.newConfiguration(conf)
     synchronized {
       // Fetch missing dependencies

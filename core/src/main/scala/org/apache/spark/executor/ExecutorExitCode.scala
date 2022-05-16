@@ -66,7 +66,7 @@ object ExecutorExitCode {
           } else {
             ""
           }
-        )
+          )
     }
   }
 }
