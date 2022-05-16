@@ -191,8 +191,14 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       case ReviveOffers =>
         for ((executorId, executor) <- executorDataMap) {
-          if (!executor.assignedQueue) {
+          if (executor.assignedQueue.isEmpty) {
             makeQueue(executorId)
+          }
+
+          for ((executorId, executor) <- executorDataMap) {
+            if (executor.assignedQueue.isDefined) {
+              makeOffers(executorId, executor.assignedQueue.get)
+            }
           }
         }
 
@@ -356,16 +362,16 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
           logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
           executorData.executorEndpoint.send(SetTaskQueue(Some(taskSet.name)))
-          executorData.assignedQueue = true
-          makeOffers(executorId, taskSet.name)
-          return
+          executorData.assignedQueue = Some(taskSet.name)
 
+          //          makeOffers(executorId, taskSet.name)
+          return
         }
 
 
         logInfo("no more task sets :(")
         executorData.executorEndpoint.send(SetTaskQueue(None))
-        executorData.assignedQueue = false
+        executorData.assignedQueue = None
       }
     }
 

@@ -504,11 +504,16 @@ private[spark] class TaskSchedulerImpl(
       executorIdToRunningTaskIds(offer.executorId) = mutable.HashSet[Long]()
     }
 
-    val taskSet = rootPool.getSchedulableByName(taskQueue).asInstanceOf[TaskSetManager]
+
+    val taskSetManager = rootPool.getSchedulableByName(taskQueue).asInstanceOf[TaskSetManager]
+    if (taskSetManager == null) {
+      logInfo("no taskSetManager defined")
+      return None
+    }
 
     val taskResourceAssignments = mutable.HashMap[String, ResourceInformation]().toMap
 
-    val (taskDesc, rejected, _) = taskSet.resourceOffer(
+    val (taskDesc, rejected, _) = taskSetManager.resourceOffer(
       execId = offer.executorId,
       host = offer.host,
       maxLocality = TaskLocality.ANY,
@@ -518,7 +523,7 @@ private[spark] class TaskSchedulerImpl(
     if (rejected) {
       throw new Exception("ouf, offer rejected")
     } else if (taskDesc.isDefined) {
-      addRunningTask(taskDesc.get.taskId, taskDesc.get.executorId, taskSet)
+      addRunningTask(taskDesc.get.taskId, taskDesc.get.executorId, taskSetManager)
       return taskDesc
     }
 
