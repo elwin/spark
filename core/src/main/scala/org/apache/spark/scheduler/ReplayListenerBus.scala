@@ -41,21 +41,21 @@ private[spark] class ReplayListenerBus extends SparkListenerBus with Logging {
    * This method can be called multiple times, but the listener behavior is undefined after any
    * error is thrown by this method.
    *
-   * @param logData Stream containing event log data.
-   * @param sourceName Filename (or other source identifier) from whence @logData is being read
+   * @param logData        Stream containing event log data.
+   * @param sourceName     Filename (or other source identifier) from whence @logData is being read
    * @param maybeTruncated Indicate whether log file might be truncated (some abnormal situations
-   *        encountered, log file might not finished writing) or not
-   * @param eventsFilter Filter function to select JSON event strings in the log data stream that
-   *        should be parsed and replayed. When not specified, all event strings in the log data
-   *        are parsed and replayed.
+   *                       encountered, log file might not finished writing) or not
+   * @param eventsFilter   Filter function to select JSON event strings in the log data stream that
+   *                       should be parsed and replayed. When not specified, all event strings in the log data
+   *                       are parsed and replayed.
    * @return whether it succeeds to replay the log file entirely without error including
    *         HaltReplayException. false otherwise.
    */
   def replay(
-      logData: InputStream,
-      sourceName: String,
-      maybeTruncated: Boolean = false,
-      eventsFilter: ReplayEventsFilter = SELECT_ALL_FILTER): Boolean = {
+              logData: InputStream,
+              sourceName: String,
+              maybeTruncated: Boolean = false,
+              eventsFilter: ReplayEventsFilter = SELECT_ALL_FILTER): Boolean = {
     val lines = Source.fromInputStream(logData)(Codec.UTF8).getLines()
     replay(lines, sourceName, maybeTruncated, eventsFilter)
   }
@@ -65,10 +65,10 @@ private[spark] class ReplayListenerBus extends SparkListenerBus with Logging {
    * [[InputStream]]. Exposed for use by custom ApplicationHistoryProvider implementations.
    */
   def replay(
-      lines: Iterator[String],
-      sourceName: String,
-      maybeTruncated: Boolean,
-      eventsFilter: ReplayEventsFilter): Boolean = {
+              lines: Iterator[String],
+              sourceName: String,
+              maybeTruncated: Boolean,
+              eventsFilter: ReplayEventsFilter): Boolean = {
     var currentLine: String = null
     var lineNumber: Int = 0
     val unrecognizedEvents = new scala.collection.mutable.HashSet[String]

@@ -91,8 +91,8 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
    * listeners to be somewhat isolated from others.
    */
   private[spark] def addToQueue(
-      listener: SparkListenerInterface,
-      queue: String): Unit = synchronized {
+                                 listener: SparkListenerInterface,
+                                 queue: String): Unit = synchronized {
     if (stopped.get()) {
       throw new IllegalStateException("LiveListenerBus is stopped.")
     }

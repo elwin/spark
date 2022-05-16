@@ -94,18 +94,20 @@ private[spark] object StatsReportListener extends Logging {
   val percentilesHeader = "\t" + percentiles.mkString("%\t") + "%"
 
   def extractDoubleDistribution(
-    taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)],
-    getMetric: (TaskInfo, TaskMetrics) => Double): Option[Distribution] = {
+                                 taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)],
+                                 getMetric: (TaskInfo, TaskMetrics) => Double): Option[Distribution] = {
     Distribution(taskInfoMetrics.map { case (info, metric) => getMetric(info, metric) })
   }
 
   // Is there some way to setup the types that I can get rid of this completely?
   def extractLongDistribution(
-    taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)],
-    getMetric: (TaskInfo, TaskMetrics) => Long): Option[Distribution] = {
+                               taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)],
+                               getMetric: (TaskInfo, TaskMetrics) => Long): Option[Distribution] = {
     extractDoubleDistribution(
       taskInfoMetrics,
-      (info, metric) => { getMetric(info, metric).toDouble })
+      (info, metric) => {
+        getMetric(info, metric).toDouble
+      })
   }
 
   def showDistribution(heading: String, d: Distribution, formatNumber: Double => String): Unit = {
@@ -117,29 +119,30 @@ private[spark] object StatsReportListener extends Logging {
   }
 
   def showDistribution(
-      heading: String,
-      dOpt: Option[Distribution],
-      formatNumber: Double => String): Unit = {
-    dOpt.foreach { d => showDistribution(heading, d, formatNumber)}
+                        heading: String,
+                        dOpt: Option[Distribution],
+                        formatNumber: Double => String): Unit = {
+    dOpt.foreach { d => showDistribution(heading, d, formatNumber) }
   }
 
   def showDistribution(heading: String, dOpt: Option[Distribution], format: String): Unit = {
     def f(d: Double): String = format.format(d)
+
     showDistribution(heading, dOpt, f _)
   }
 
   def showDistribution(
-      heading: String,
-      format: String,
-      getMetric: (TaskInfo, TaskMetrics) => Double,
-      taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)]): Unit = {
+                        heading: String,
+                        format: String,
+                        getMetric: (TaskInfo, TaskMetrics) => Double,
+                        taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)]): Unit = {
     showDistribution(heading, extractDoubleDistribution(taskInfoMetrics, getMetric), format)
   }
 
   def showBytesDistribution(
-      heading: String,
-      getMetric: (TaskInfo, TaskMetrics) => Long,
-      taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)]): Unit = {
+                             heading: String,
+                             getMetric: (TaskInfo, TaskMetrics) => Long,
+                             taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)]): Unit = {
     showBytesDistribution(heading, extractLongDistribution(taskInfoMetrics, getMetric))
   }
 
@@ -157,9 +160,9 @@ private[spark] object StatsReportListener extends Logging {
   }
 
   def showMillisDistribution(
-      heading: String,
-      getMetric: (TaskInfo, TaskMetrics) => Long,
-      taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)]): Unit = {
+                              heading: String,
+                              getMetric: (TaskInfo, TaskMetrics) => Long,
+                              taskInfoMetrics: Seq[(TaskInfo, TaskMetrics)]): Unit = {
     showMillisDistribution(heading, extractLongDistribution(taskInfoMetrics, getMetric))
   }
 

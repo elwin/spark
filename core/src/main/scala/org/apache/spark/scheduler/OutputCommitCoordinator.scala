@@ -27,11 +27,12 @@ import org.apache.spark.util.{RpcUtils, ThreadUtils}
 private sealed trait OutputCommitCoordinationMessage extends Serializable
 
 private case object StopCoordinator extends OutputCommitCoordinationMessage
+
 private case class AskPermissionToCommitOutput(
-    stage: Int,
-    stageAttempt: Int,
-    partition: Int,
-    attemptNumber: Int)
+                                                stage: Int,
+                                                stageAttempt: Int,
+                                                partition: Int,
+                                                attemptNumber: Int)
 
 /**
  * Authority that decides whether tasks can commit output to HDFS. Uses a "first committer wins"
@@ -86,17 +87,17 @@ private[spark] class OutputCommitCoordinator(conf: SparkConf, isDriver: Boolean)
    * task will be denied.  If the authorized task attempt fails (e.g. due to its executor being
    * lost), then a subsequent task attempt may be authorized to commit its output.
    *
-   * @param stage the stage number
-   * @param partition the partition number
+   * @param stage         the stage number
+   * @param partition     the partition number
    * @param attemptNumber how many times this task has been attempted
    *                      (see [[TaskContext.attemptNumber()]])
    * @return true if this task is authorized to commit, false otherwise
    */
   def canCommit(
-      stage: Int,
-      stageAttempt: Int,
-      partition: Int,
-      attemptNumber: Int): Boolean = {
+                 stage: Int,
+                 stageAttempt: Int,
+                 partition: Int,
+                 attemptNumber: Int): Boolean = {
     val msg = AskPermissionToCommitOutput(stage, stageAttempt, partition, attemptNumber)
     coordinatorRef match {
       case Some(endpointRef) =>
@@ -113,7 +114,7 @@ private[spark] class OutputCommitCoordinator(conf: SparkConf, isDriver: Boolean)
    * Called by the DAGScheduler when a stage starts. Initializes the stage's state if it hasn't
    * yet been initialized.
    *
-   * @param stage the stage id.
+   * @param stage          the stage id.
    * @param maxPartitionId the maximum partition id that could appear in this stage's tasks (i.e.
    *                       the maximum possible value of `context.partitionId`).
    */
@@ -135,11 +136,11 @@ private[spark] class OutputCommitCoordinator(conf: SparkConf, isDriver: Boolean)
 
   // Called by DAGScheduler
   private[scheduler] def taskCompleted(
-      stage: Int,
-      stageAttempt: Int,
-      partition: Int,
-      attemptNumber: Int,
-      reason: TaskEndReason): Unit = synchronized {
+                                        stage: Int,
+                                        stageAttempt: Int,
+                                        partition: Int,
+                                        attemptNumber: Int,
+                                        reason: TaskEndReason): Unit = synchronized {
     val stageState = stageStates.getOrElse(stage, {
       logDebug(s"Ignoring task completion for completed stage")
       return
@@ -172,10 +173,10 @@ private[spark] class OutputCommitCoordinator(conf: SparkConf, isDriver: Boolean)
 
   // Marked private[scheduler] instead of private so this can be mocked in tests
   private[scheduler] def handleAskPermissionToCommit(
-      stage: Int,
-      stageAttempt: Int,
-      partition: Int,
-      attemptNumber: Int): Boolean = synchronized {
+                                                      stage: Int,
+                                                      stageAttempt: Int,
+                                                      partition: Int,
+                                                      attemptNumber: Int): Boolean = synchronized {
     stageStates.get(stage) match {
       case Some(state) if attemptFailed(state, stageAttempt, partition, attemptNumber) =>
         logInfo(s"Commit denied for stage=$stage.$stageAttempt, partition=$partition: " +
@@ -201,10 +202,10 @@ private[spark] class OutputCommitCoordinator(conf: SparkConf, isDriver: Boolean)
   }
 
   private def attemptFailed(
-      stageState: StageState,
-      stageAttempt: Int,
-      partition: Int,
-      attempt: Int): Boolean = synchronized {
+                             stageState: StageState,
+                             stageAttempt: Int,
+                             partition: Int,
+                             attempt: Int): Boolean = synchronized {
     val failInfo = TaskIdentifier(stageAttempt, attempt)
     stageState.failures.get(partition).exists(_.contains(failInfo))
   }
@@ -214,7 +215,7 @@ private[spark] object OutputCommitCoordinator {
 
   // This endpoint is used only for RPC
   private[spark] class OutputCommitCoordinatorEndpoint(
-      override val rpcEnv: RpcEnv, outputCommitCoordinator: OutputCommitCoordinator)
+                                                        override val rpcEnv: RpcEnv, outputCommitCoordinator: OutputCommitCoordinator)
     extends RpcEndpoint with Logging {
 
     logDebug("init") // force eager creation of logger

@@ -37,11 +37,11 @@ import org.apache.spark.util.Clock
  * TaskScheduler (e.g. its event handlers). It should not be called from other threads.
  */
 private[scheduler] class TaskSetExcludelist(
-    private val listenerBus: LiveListenerBus,
-    val conf: SparkConf,
-    val stageId: Int,
-    val stageAttemptId: Int,
-    val clock: Clock) extends Logging {
+                                             private val listenerBus: LiveListenerBus,
+                                             val conf: SparkConf,
+                                             val stageId: Int,
+                                             val stageAttemptId: Int,
+                                             val clock: Clock) extends Logging {
 
   private val MAX_TASK_ATTEMPTS_PER_EXECUTOR = conf.get(config.MAX_TASK_ATTEMPTS_PER_EXECUTOR)
   private val MAX_TASK_ATTEMPTS_PER_NODE = conf.get(config.MAX_TASK_ATTEMPTS_PER_NODE)
@@ -105,10 +105,10 @@ private[scheduler] class TaskSetExcludelist(
   }
 
   private[scheduler] def updateExcludedForFailedTask(
-      host: String,
-      exec: String,
-      index: Int,
-      failureReason: String): Unit = {
+                                                      host: String,
+                                                      exec: String,
+                                                      index: Int,
+                                                      failureReason: String): Unit = {
     latestFailureReason = failureReason
     val execFailures = execToFailures.getOrElseUpdate(exec, new ExecutorFailuresInTaskSet(host))
     execFailures.updateWithFailure(index, clock.getTimeMillis())
@@ -138,7 +138,7 @@ private[scheduler] class TaskSetExcludelist(
         // This executor has been excluded for this stage.  Let's check if it
         // the whole node should be excluded.
         val excludedExecutorsOnNode =
-          execsWithFailuresOnNode.filter(excludedExecs.contains(_))
+        execsWithFailuresOnNode.filter(excludedExecs.contains(_))
         val now = clock.getTimeMillis()
         // SparkListenerExecutorBlacklistedForStage is deprecated but post both events
         // to keep backward compatibility

@@ -29,22 +29,37 @@ import org.apache.spark.scheduler.SchedulingMode.SchedulingMode
  */
 private[spark] trait Schedulable {
   var parent: Pool
+
   // child queues
   def schedulableQueue: ConcurrentLinkedQueue[Schedulable]
+
   def schedulingMode: SchedulingMode
+
   def weight: Int
+
   def minShare: Int
+
   def runningTasks: Int
+
   def priority: Int
+
   def stageId: Int
+
   def name: String
 
   def isSchedulable: Boolean
+
   def addSchedulable(schedulable: Schedulable): Unit
+
   def removeSchedulable(schedulable: Schedulable): Unit
+
   def getSchedulableByName(name: String): Schedulable
+
   def executorLost(executorId: String, host: String, reason: ExecutorLossReason): Unit
+
   def executorDecommission(executorId: String): Unit
+
   def checkSpeculatableTasks(minTimeToSpeculation: Long): Boolean
+
   def getSortedTaskSetQueue: ArrayBuffer[TaskSetManager]
 }

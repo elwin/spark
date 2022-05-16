@@ -35,30 +35,30 @@ import org.apache.spark.util.{ByteBufferInputStream, ByteBufferOutputStream, Uti
  *
  * TaskDescriptions and the associated Task need to be serialized carefully for two reasons:
  *
- *     (1) When a TaskDescription is received by an Executor, the Executor needs to first get the
- *         list of JARs and files and add these to the classpath, and set the properties, before
- *         deserializing the Task object (serializedTask). This is why the Properties are included
- *         in the TaskDescription, even though they're also in the serialized task.
- *     (2) Because a TaskDescription is serialized and sent to an executor for each task, efficient
- *         serialization (both in terms of serialization time and serialized buffer size) is
- *         important. For this reason, we serialize TaskDescriptions ourselves with the
- *         TaskDescription.encode and TaskDescription.decode methods.  This results in a smaller
- *         serialized size because it avoids serializing unnecessary fields in the Map objects
- *         (which can introduce significant overhead when the maps are small).
+ * (1) When a TaskDescription is received by an Executor, the Executor needs to first get the
+ * list of JARs and files and add these to the classpath, and set the properties, before
+ * deserializing the Task object (serializedTask). This is why the Properties are included
+ * in the TaskDescription, even though they're also in the serialized task.
+ * (2) Because a TaskDescription is serialized and sent to an executor for each task, efficient
+ * serialization (both in terms of serialization time and serialized buffer size) is
+ * important. For this reason, we serialize TaskDescriptions ourselves with the
+ * TaskDescription.encode and TaskDescription.decode methods.  This results in a smaller
+ * serialized size because it avoids serializing unnecessary fields in the Map objects
+ * (which can introduce significant overhead when the maps are small).
  */
 private[spark] class TaskDescription(
-    val taskId: Long,
-    val attemptNumber: Int,
-    val executorId: String,
-    val name: String,
-    val index: Int,    // Index within this task's TaskSet
-    val partitionId: Int,
-    val addedFiles: Map[String, Long],
-    val addedJars: Map[String, Long],
-    val addedArchives: Map[String, Long],
-    val properties: Properties,
-    val resources: immutable.Map[String, ResourceInformation],
-    val serializedTask: ByteBuffer) {
+                                      val taskId: Long,
+                                      val attemptNumber: Int,
+                                      val executorId: String,
+                                      val name: String,
+                                      val index: Int, // Index within this task's TaskSet
+                                      val partitionId: Int,
+                                      val addedFiles: Map[String, Long],
+                                      val addedJars: Map[String, Long],
+                                      val addedArchives: Map[String, Long],
+                                      val properties: Properties,
+                                      val resources: immutable.Map[String, ResourceInformation],
+                                      val serializedTask: ByteBuffer) {
 
   override def toString: String = s"TaskDescription($name)"
 }
@@ -73,7 +73,7 @@ private[spark] object TaskDescription {
   }
 
   private def serializeResources(map: immutable.Map[String, ResourceInformation],
-      dataOut: DataOutputStream): Unit = {
+                                 dataOut: DataOutputStream): Unit = {
     dataOut.writeInt(map.size)
     map.foreach { case (key, value) =>
       dataOut.writeUTF(key)
@@ -136,7 +136,7 @@ private[spark] object TaskDescription {
   }
 
   private def deserializeResources(dataIn: DataInputStream):
-      immutable.Map[String, ResourceInformation] = {
+  immutable.Map[String, ResourceInformation] = {
     val map = new HashMap[String, ResourceInformation]()
     val mapSize = dataIn.readInt()
     var i = 0

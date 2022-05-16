@@ -46,7 +46,7 @@ private[spark] trait TaskScheduler {
   // Invoked after system has successfully initialized (typically in spark context).
   // Yarn uses this to bootstrap allocation of resources based on preferred locations,
   // wait for executor registrations, etc.
-  def postStartHook(): Unit = { }
+  def postStartHook(): Unit = {}
 
   // Disconnect from the cluster.
   def stop(): Unit
@@ -86,10 +86,10 @@ private[spark] trait TaskScheduler {
    * Otherwise, return false, indicating that the block manager should re-register.
    */
   def executorHeartbeatReceived(
-      execId: String,
-      accumUpdates: Array[(Long, Seq[AccumulatorV2[_, _]])],
-      blockManagerId: BlockManagerId,
-      executorUpdates: Map[(Int, Int), ExecutorMetrics]): Boolean
+                                 execId: String,
+                                 accumUpdates: Array[(Long, Seq[AccumulatorV2[_, _]])],
+                                 blockManagerId: BlockManagerId,
+                                 executorUpdates: Map[(Int, Int), ExecutorMetrics]): Boolean
 
   /**
    * Get an application ID associated with the job.

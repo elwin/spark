@@ -453,61 +453,61 @@ private[spark] class TaskSetManager(
     )
 
     (Some(taskDescription), false, index)
-//        val offerExcluded = taskSetExcludelistHelperOpt.exists { excludeList =>
-//          excludeList.isNodeExcludedForTaskSet(host) ||
-//            excludeList.isExecutorExcludedForTaskSet(execId)
-//        }
-//        if (!isZombie && !offerExcluded) {
-//          val curTime = clock.getTimeMillis()
-//
-//          var allowedLocality = maxLocality
-//
-//          if (maxLocality != TaskLocality.NO_PREF) {
-//            allowedLocality = getAllowedLocalityLevel(curTime)
-//            if (allowedLocality > maxLocality) {
-//              // We're not allowed to search for farther-away tasks
-//              allowedLocality = maxLocality
-//            }
-//          }
-//
-//          var dequeuedTaskIndex: Option[Int] = None
-//          val taskDescription =
-//            dequeueTask(execId, host, allowedLocality)
-//              .map { case (index, taskLocality, speculative) =>
-//                dequeuedTaskIndex = Some(index)
-//                if (legacyLocalityWaitReset && maxLocality != TaskLocality.NO_PREF) {
-//                  resetDelayScheduleTimer(Some(taskLocality))
-//                }
-//                if (isBarrier) {
-//                  barrierPendingLaunchTasks(index) =
-//                    BarrierPendingLaunchTask(
-//                      execId,
-//                      host,
-//                      index,
-//                      taskLocality,
-//                      taskResourceAssignments)
-//                  // return null since the TaskDescription for the barrier task is not ready yet
-//                  null
-//                } else {
-//                  prepareLaunchingTask(
-//                    execId,
-//                    host,
-//                    index,
-//                    taskLocality,
-//                    speculative,
-//                    taskResourceAssignments,
-//                    curTime)
-//                }
-//              }
-//          val hasPendingTasks = pendingTasks.all.nonEmpty || pendingSpeculatableTasks.all.nonEmpty
-//          val hasScheduleDelayReject =
-//            taskDescription.isEmpty &&
-//              maxLocality == TaskLocality.ANY &&
-//              hasPendingTasks
-//          (taskDescription, hasScheduleDelayReject, dequeuedTaskIndex.getOrElse(-1))
-//        } else {
-//          (None, false, -1)
-//        }
+    //        val offerExcluded = taskSetExcludelistHelperOpt.exists { excludeList =>
+    //          excludeList.isNodeExcludedForTaskSet(host) ||
+    //            excludeList.isExecutorExcludedForTaskSet(execId)
+    //        }
+    //        if (!isZombie && !offerExcluded) {
+    //          val curTime = clock.getTimeMillis()
+    //
+    //          var allowedLocality = maxLocality
+    //
+    //          if (maxLocality != TaskLocality.NO_PREF) {
+    //            allowedLocality = getAllowedLocalityLevel(curTime)
+    //            if (allowedLocality > maxLocality) {
+    //              // We're not allowed to search for farther-away tasks
+    //              allowedLocality = maxLocality
+    //            }
+    //          }
+    //
+    //          var dequeuedTaskIndex: Option[Int] = None
+    //          val taskDescription =
+    //            dequeueTask(execId, host, allowedLocality)
+    //              .map { case (index, taskLocality, speculative) =>
+    //                dequeuedTaskIndex = Some(index)
+    //                if (legacyLocalityWaitReset && maxLocality != TaskLocality.NO_PREF) {
+    //                  resetDelayScheduleTimer(Some(taskLocality))
+    //                }
+    //                if (isBarrier) {
+    //                  barrierPendingLaunchTasks(index) =
+    //                    BarrierPendingLaunchTask(
+    //                      execId,
+    //                      host,
+    //                      index,
+    //                      taskLocality,
+    //                      taskResourceAssignments)
+    //                  // return null since the TaskDescription for the barrier task is not ready yet
+    //                  null
+    //                } else {
+    //                  prepareLaunchingTask(
+    //                    execId,
+    //                    host,
+    //                    index,
+    //                    taskLocality,
+    //                    speculative,
+    //                    taskResourceAssignments,
+    //                    curTime)
+    //                }
+    //              }
+    //          val hasPendingTasks = pendingTasks.all.nonEmpty || pendingSpeculatableTasks.all.nonEmpty
+    //          val hasScheduleDelayReject =
+    //            taskDescription.isEmpty &&
+    //              maxLocality == TaskLocality.ANY &&
+    //              hasPendingTasks
+    //          (taskDescription, hasScheduleDelayReject, dequeuedTaskIndex.getOrElse(-1))
+    //        } else {
+    //          (None, false, -1)
+    //        }
   }
 
   def prepareLaunchingTask(

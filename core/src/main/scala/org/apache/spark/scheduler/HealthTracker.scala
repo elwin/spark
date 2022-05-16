@@ -34,13 +34,13 @@ import org.apache.spark.util.{Clock, SystemClock, Utils}
  *
  * The tracker needs to deal with a variety of workloads, e.g.:
  *
- *  * bad user code -- this may lead to many task failures, but that should not count against
- *      individual executors
- *  * many small stages -- this may prevent a bad executor for having many failures within one
- *      stage, but still many failures over the entire application
- *  * "flaky" executors -- they don't fail every task, but are still faulty enough to merit
- *      excluding
- *  * missing shuffle files -- may trigger fetch failures on healthy executors.
+ * * bad user code -- this may lead to many task failures, but that should not count against
+ * individual executors
+ * * many small stages -- this may prevent a bad executor for having many failures within one
+ * stage, but still many failures over the entire application
+ * * "flaky" executors -- they don't fail every task, but are still faulty enough to merit
+ * excluding
+ * * missing shuffle files -- may trigger fetch failures on healthy executors.
  *
  * See the design doc on SPARK-8425 for a more in-depth discussion. Note SPARK-32037 renamed
  * the feature.
@@ -49,11 +49,11 @@ import org.apache.spark.util.{Clock, SystemClock, Utils}
  * called by multiple threads, callers must already have a lock on the TaskSchedulerImpl.  The
  * one exception is [[excludedNodeList()]], which can be called without holding a lock.
  */
-private[scheduler] class HealthTracker (
-    private val listenerBus: LiveListenerBus,
-    conf: SparkConf,
-    allocationClient: Option[ExecutorAllocationClient],
-    clock: Clock = new SystemClock()) extends Logging {
+private[scheduler] class HealthTracker(
+                                        private val listenerBus: LiveListenerBus,
+                                        conf: SparkConf,
+                                        allocationClient: Option[ExecutorAllocationClient],
+                                        clock: Clock = new SystemClock()) extends Logging {
 
   def this(sc: SparkContext, allocationClient: Option[ExecutorAllocationClient]) = {
     this(sc.listenerBus, sc.conf, allocationClient)
@@ -144,7 +144,9 @@ private[scheduler] class HealthTracker (
 
   private def updateNextExpiryTime(): Unit = {
     val execMinExpiry = if (executorIdToExcludedStatus.nonEmpty) {
-      executorIdToExcludedStatus.map{_._2.expiryTime}.min
+      executorIdToExcludedStatus.map {
+        _._2.expiryTime
+      }.min
     } else {
       Long.MaxValue
     }
@@ -259,9 +261,9 @@ private[scheduler] class HealthTracker (
   }
 
   def updateExcludedForSuccessfulTaskSet(
-      stageId: Int,
-      stageAttemptId: Int,
-      failuresByExec: HashMap[String, ExecutorFailuresInTaskSet]): Unit = {
+                                          stageId: Int,
+                                          stageAttemptId: Int,
+                                          failuresByExec: HashMap[String, ExecutorFailuresInTaskSet]): Unit = {
     // if any tasks failed, we count them towards the overall failure count for the executor at
     // this point.
     val now = clock.getTimeMillis()
@@ -297,7 +299,7 @@ private[scheduler] class HealthTracker (
         // If the node is already excluded, we avoid adding it again with a later expiry
         // time.
         if (excludedExecsOnNode.size >= MAX_FAILED_EXEC_PER_NODE &&
-            !nodeIdToExcludedExpiryTime.contains(node)) {
+          !nodeIdToExcludedExpiryTime.contains(node)) {
           logInfo(s"Excluding node $node because it has ${excludedExecsOnNode.size} " +
             s"executors excluded: ${excludedExecsOnNode}")
           nodeIdToExcludedExpiryTime.put(node, expiryTimeForNewExcludes)
@@ -358,9 +360,9 @@ private[scheduler] class HealthTracker (
     private var minExpiryTime = Long.MaxValue
 
     def addFailures(
-        stage: Int,
-        stageAttempt: Int,
-        failuresInTaskSet: ExecutorFailuresInTaskSet): Unit = {
+                     stage: Int,
+                     stageAttempt: Int,
+                     failuresInTaskSet: ExecutorFailuresInTaskSet): Unit = {
       failuresInTaskSet.taskToFailureCountAndFailureTime.foreach {
         case (taskIdx, (_, failureTime)) =>
           val expiryTime = failureTime + EXCLUDE_ON_FAILURE_TIMEOUT_MILLIS
@@ -385,9 +387,9 @@ private[scheduler] class HealthTracker (
      * triggering exlusion.  However, note that we do *not* remove executors and nodes from
      * being excluded as we expire individual task failures -- each have their own timeout.  E.g.,
      * suppose:
-     *  * timeout = 10, maxFailuresPerExec = 2
-     *  * Task 1 fails on exec 1 at time 0
-     *  * Task 2 fails on exec 1 at time 5
+     * * timeout = 10, maxFailuresPerExec = 2
+     * * Task 1 fails on exec 1 at time 0
+     * * Task 2 fails on exec 1 at time 5
      * -->  exec 1 is excluded from time 5 - 15.
      * This is to simplify the implementation, as well as keep the behavior easier to understand
      * for the end user.

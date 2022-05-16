@@ -42,10 +42,10 @@ import org.apache.spark.util.Utils
  * push-based shuffle.
  */
 private[spark] class MergeStatus(
-    private[this] var loc: BlockManagerId,
-    private[this] var _shuffleMergeId: Int,
-    private[this] var mapTracker: RoaringBitmap,
-    private[this] var size: Long)
+                                  private[this] var loc: BlockManagerId,
+                                  private[this] var _shuffleMergeId: Int,
+                                  private[this] var mapTracker: RoaringBitmap,
+                                  private[this] var size: Long)
   extends Externalizable with ShuffleOutputStatus {
 
   protected def this() = this(null, -1, null, -1) // For deserialization only
@@ -100,8 +100,8 @@ private[spark] object MergeStatus {
    * for the given ExternalShuffleService.
    */
   def convertMergeStatusesToMergeStatusArr(
-      mergeStatuses: MergeStatuses,
-      loc: BlockManagerId): Seq[(Int, MergeStatus)] = {
+                                            mergeStatuses: MergeStatuses,
+                                            loc: BlockManagerId): Seq[(Int, MergeStatus)] = {
     assert(mergeStatuses.bitmaps.length == mergeStatuses.reduceIds.length &&
       mergeStatuses.bitmaps.length == mergeStatuses.sizes.length)
     val mergerLoc = BlockManagerId(BlockManagerId.SHUFFLE_MERGER_IDENTIFIER, loc.host, loc.port)
@@ -115,10 +115,10 @@ private[spark] object MergeStatus {
   }
 
   def apply(
-      loc: BlockManagerId,
-      shuffleMergeId: Int,
-      bitmap: RoaringBitmap,
-      size: Long): MergeStatus = {
+             loc: BlockManagerId,
+             shuffleMergeId: Int,
+             bitmap: RoaringBitmap,
+             size: Long): MergeStatus = {
     new MergeStatus(loc, shuffleMergeId, bitmap, size)
   }
 }

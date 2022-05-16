@@ -39,25 +39,25 @@ import org.apache.spark.util.{JsonProtocol, Utils}
  * A SparkListener that logs events to persistent storage.
  *
  * Event logging is specified by the following configurable parameters:
- *   spark.eventLog.enabled - Whether event logging is enabled.
- *   spark.eventLog.dir - Path to the directory in which events are logged.
- *   spark.eventLog.logBlockUpdates.enabled - Whether to log block updates
- *   spark.eventLog.logStageExecutorMetrics - Whether to log stage executor metrics
+ * spark.eventLog.enabled - Whether event logging is enabled.
+ * spark.eventLog.dir - Path to the directory in which events are logged.
+ * spark.eventLog.logBlockUpdates.enabled - Whether to log block updates
+ * spark.eventLog.logStageExecutorMetrics - Whether to log stage executor metrics
  *
  * Event log file writer maintains its own parameters: refer the doc of [[EventLogFileWriter]]
  * and its descendant for more details.
  */
 private[spark] class EventLoggingListener(
-    appId: String,
-    appAttemptId : Option[String],
-    logBaseDir: URI,
-    sparkConf: SparkConf,
-    hadoopConf: Configuration)
+                                           appId: String,
+                                           appAttemptId: Option[String],
+                                           logBaseDir: URI,
+                                           sparkConf: SparkConf,
+                                           hadoopConf: Configuration)
   extends SparkListener with Logging {
 
   import EventLoggingListener._
 
-  def this(appId: String, appAttemptId : Option[String], logBaseDir: URI, sparkConf: SparkConf) =
+  def this(appId: String, appAttemptId: Option[String], logBaseDir: URI, sparkConf: SparkConf) =
     this(appId, appAttemptId, logBaseDir, sparkConf,
       SparkHadoopUtil.get.newConfiguration(sparkConf))
 
@@ -148,8 +148,8 @@ private[spark] class EventLoggingListener(
         (event.stageInfo.stageId, event.stageInfo.attemptNumber()))
       executorOpt.foreach { execMap =>
         execMap.foreach { case (executorId, peakExecutorMetrics) =>
-            logEvent(new SparkListenerStageExecutorMetrics(executorId, event.stageInfo.stageId,
-              event.stageInfo.attemptNumber(), peakExecutorMetrics))
+          logEvent(new SparkListenerStageExecutorMetrics(executorId, event.stageInfo.stageId,
+            event.stageInfo.attemptNumber(), peakExecutorMetrics))
         }
       }
     }
@@ -183,6 +183,7 @@ private[spark] class EventLoggingListener(
   override def onApplicationEnd(event: SparkListenerApplicationEnd): Unit = {
     logEvent(event, flushLogger = true)
   }
+
   override def onExecutorAdded(event: SparkListenerExecutorAdded): Unit = {
     logEvent(event, flushLogger = true)
   }
@@ -200,12 +201,12 @@ private[spark] class EventLoggingListener(
   }
 
   override def onExecutorBlacklistedForStage(
-      event: SparkListenerExecutorBlacklistedForStage): Unit = {
+                                              event: SparkListenerExecutorBlacklistedForStage): Unit = {
     logEvent(event, flushLogger = true)
   }
 
   override def onExecutorExcludedForStage(
-      event: SparkListenerExecutorExcludedForStage): Unit = {
+                                           event: SparkListenerExecutorExcludedForStage): Unit = {
     logEvent(event, flushLogger = true)
   }
 
@@ -306,8 +307,8 @@ private[spark] object EventLoggingListener extends Logging {
   val DRIVER_STAGE_KEY = (-1, -1)
 
   private[spark] def redactEvent(
-      sparkConf: SparkConf,
-      event: SparkListenerEnvironmentUpdate): SparkListenerEnvironmentUpdate = {
+                                  sparkConf: SparkConf,
+                                  event: SparkListenerEnvironmentUpdate): SparkListenerEnvironmentUpdate = {
     // environmentDetails maps a string descriptor to a set of properties
     // Similar to:
     // "JVM Information" -> jvmInformation,

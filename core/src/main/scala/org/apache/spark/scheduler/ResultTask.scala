@@ -31,42 +31,42 @@ import org.apache.spark.rdd.RDD
  *
  * See [[Task]] for more information.
  *
- * @param stageId id of the stage this task belongs to
- * @param stageAttemptId attempt id of the stage this task belongs to
- * @param taskBinary broadcasted version of the serialized RDD and the function to apply on each
- *                   partition of the given RDD. Once deserialized, the type should be
- *                   (RDD[T], (TaskContext, Iterator[T]) => U).
- * @param partition partition of the RDD this task is associated with
- * @param locs preferred task execution locations for locality scheduling
- * @param outputId index of the task in this job (a job can launch tasks on only a subset of the
- *                 input RDD's partitions).
- * @param localProperties copy of thread-local properties set by the user on the driver side.
+ * @param stageId               id of the stage this task belongs to
+ * @param stageAttemptId        attempt id of the stage this task belongs to
+ * @param taskBinary            broadcasted version of the serialized RDD and the function to apply on each
+ *                              partition of the given RDD. Once deserialized, the type should be
+ *                              (RDD[T], (TaskContext, Iterator[T]) => U).
+ * @param partition             partition of the RDD this task is associated with
+ * @param locs                  preferred task execution locations for locality scheduling
+ * @param outputId              index of the task in this job (a job can launch tasks on only a subset of the
+ *                              input RDD's partitions).
+ * @param localProperties       copy of thread-local properties set by the user on the driver side.
  * @param serializedTaskMetrics a `TaskMetrics` that is created and serialized on the driver side
  *                              and sent to executor side.
  *
- * The parameters below are optional:
- * @param jobId id of the job this task belongs to
- * @param appId id of the app this task belongs to
- * @param appAttemptId attempt id of the app this task belongs to
- * @param isBarrier whether this task belongs to a barrier stage. Spark must launch all the tasks
- *                  at the same time for a barrier stage.
+ *                              The parameters below are optional:
+ * @param jobId                 id of the job this task belongs to
+ * @param appId                 id of the app this task belongs to
+ * @param appAttemptId          attempt id of the app this task belongs to
+ * @param isBarrier             whether this task belongs to a barrier stage. Spark must launch all the tasks
+ *                              at the same time for a barrier stage.
  */
 private[spark] class ResultTask[T, U](
-    stageId: Int,
-    stageAttemptId: Int,
-    taskBinary: Broadcast[Array[Byte]],
-    partition: Partition,
-    locs: Seq[TaskLocation],
-    val outputId: Int,
-    localProperties: Properties,
-    serializedTaskMetrics: Array[Byte],
-    jobId: Option[Int] = None,
-    appId: Option[String] = None,
-    appAttemptId: Option[String] = None,
-    isBarrier: Boolean = false)
+                                       stageId: Int,
+                                       stageAttemptId: Int,
+                                       taskBinary: Broadcast[Array[Byte]],
+                                       partition: Partition,
+                                       locs: Seq[TaskLocation],
+                                       val outputId: Int,
+                                       localProperties: Properties,
+                                       serializedTaskMetrics: Array[Byte],
+                                       jobId: Option[Int] = None,
+                                       appId: Option[String] = None,
+                                       appAttemptId: Option[String] = None,
+                                       isBarrier: Boolean = false)
   extends Task[U](stageId, stageAttemptId, partition.index, localProperties, serializedTaskMetrics,
     jobId, appId, appAttemptId, isBarrier)
-  with Serializable {
+    with Serializable {
 
   @transient private[this] val preferredLocs: Seq[TaskLocation] = {
     if (locs == null) Nil else locs.distinct

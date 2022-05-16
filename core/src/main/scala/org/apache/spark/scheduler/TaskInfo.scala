@@ -27,18 +27,19 @@ import org.apache.spark.annotation.DeveloperApi
  */
 @DeveloperApi
 class TaskInfo(
-    val taskId: Long,
-    /**
-     * The index of this task within its task set. Not necessarily the same as the ID of the RDD
-     * partition that the task is computing.
-     */
-    val index: Int,
-    val attemptNumber: Int,
-    val launchTime: Long,
-    val executorId: String,
-    val host: String,
-    val taskLocality: TaskLocality.TaskLocality,
-    val speculative: Boolean) {
+                val taskId: Long,
+
+                /**
+                 * The index of this task within its task set. Not necessarily the same as the ID of the RDD
+                 * partition that the task is computing.
+                 */
+                val index: Int,
+                val attemptNumber: Int,
+                val launchTime: Long,
+                val executorId: String,
+                val host: String,
+                val taskLocality: TaskLocality.TaskLocality,
+                val speculative: Boolean) {
 
   /**
    * The time when the task started remotely getting the result. Will not be set if the
