@@ -157,36 +157,30 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       case RequestTaskQueue(executorId) => makeQueue(executorId)
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
-        def run(): Unit = {
+
+        scheduler.statusUpdate(taskId, state, data.value)
+        if (TaskState.isFinished(state)) {
+
           time(time({}, "nothing"), "time")
 
-          scheduler.statusUpdate(taskId, state, data.value)
-          if (TaskState.isFinished(state)) {
-            executorDataMap.get(executorId) match {
-              case Some(executorInfo) =>
-                val rpId = executorInfo.resourceProfileId
-                val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
-                val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
-                executorInfo.freeCores += taskCpus
-                resources.foreach { case (k, v) =>
-                  executorInfo.resourcesInfo.get(k).foreach { r =>
-                    r.release(v.addresses)
-                  }
+          time(executorDataMap.get(executorId) match {
+            case Some(executorInfo) =>
+              val rpId = executorInfo.resourceProfileId
+              val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
+              val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
+              executorInfo.freeCores += taskCpus
+              resources.foreach { case (k, v) =>
+                executorInfo.resourcesInfo.get(k).foreach { r =>
+                  r.release(v.addresses)
                 }
-                if (taskQueue.isDefined) time(makeOffers(executorId, taskQueue.get), "makeOffers")
+              }
+              if (taskQueue.isDefined) time(makeOffers(executorId, taskQueue.get), "makeOffers")
 
-              case None =>
-                // Ignoring the update since we don't know about the executor.
-                logWarning(s"Ignored task status update ($taskId state $state) " +
-                  s"from unknown executor with ID $executorId")
-            }
-          }
-        }
-
-        if (!TaskState.isFinished(state)) {
-          run()
-        } else {
-          time(run(), "statusUpdate")
+            case None =>
+              // Ignoring the update since we don't know about the executor.
+              logWarning(s"Ignored task status update ($taskId state $state) " +
+                s"from unknown executor with ID $executorId")
+          }, "statusUpdate")
         }
 
       case ReviveOffers =>
