@@ -120,6 +120,15 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       ThreadUtils.newDaemonSingleThreadScheduledExecutor("cleanup-decommission-execs")
     }
 
+  def time[R](block: => R, name: String): R = {
+    val t0 = System.nanoTime()
+    val result = block
+    val t1 = System.nanoTime()
+    logInfo(s"""elw3: {"type": "measurement", "name": "${name}", "duration": ${t1 - t0}, "timestamp": $t0}""")
+
+    result
+  }
+
   class DriverEndpoint extends IsolatedRpcEndpoint with Logging {
 
     override val rpcEnv: RpcEnv = CoarseGrainedSchedulerBackend.this.rpcEnv
@@ -148,7 +157,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       case StatusUpdate(executorId, taskId, state, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
         if (TaskState.isFinished(state)) {
-          executorDataMap.get(executorId) match {
+          time(time({}, "nothing"), "time")
+
+          time(executorDataMap.get(executorId) match {
             case Some(executorInfo) =>
               val rpId = executorInfo.resourceProfileId
               val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
@@ -164,7 +175,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
               // Ignoring the update since we don't know about the executor.
               logWarning(s"Ignored task status update ($taskId state $state) " +
                 s"from unknown executor with ID $executorId")
-          }
+          }, "statusUpdate")
         }
 
       case ReviveOffers =>
@@ -356,7 +367,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
               executorData.resourcesInfo.map { case (rName, rInfo) =>
                 (rName, rInfo.availableAddrs.toBuffer)
               }, executorData.resourceProfileId))
-          scheduler.resourceOffers(workOffers, false)
+          time(scheduler.resourceOffers(workOffers, false), "resourceOffers")
         } else {
           Seq.empty
         }
@@ -399,7 +410,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
             s"${executorData.executorHost}.")
 
-          executorData.executorEndpoint.send(LaunchTask(new SerializableBuffer(serializedTask)))
+          time(executorData.executorEndpoint.send(LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch")
         }
       }
     }
@@ -702,8 +713,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
   }
 
   // this function is for testing only
-  def getExecutorAvailableResources(
-                                     executorId: String): Map[String, ExecutorResourceInfo] = synchronized {
+  def getExecutorAvailableResources(executorId: String): Map[String, ExecutorResourceInfo] = synchronized {
     executorDataMap.get(executorId).map(_.resourcesInfo).getOrElse(Map.empty)
   }
 
