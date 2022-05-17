@@ -1,7 +1,7 @@
 build-core:
 	./elwin/core.sh
 
-docker:
+push:
 	./elwin/docker.sh latest
 
 start-cluster:

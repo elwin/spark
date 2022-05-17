@@ -158,6 +158,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         scheduler.statusUpdate(taskId, state, data.value)
         if (TaskState.isFinished(state)) {
           time(time({}, "nothing"), "time")
+          time(logInfo("dummy printline"), "logInfo")
+          time(System.nanoTime(), "nanoTime")
 
           time(executorDataMap.get(executorId) match {
             case Some(executorInfo) =>
@@ -170,7 +172,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   r.release(v.addresses)
                 }
               }
-              makeOffers(executorId)
+              time(makeOffers(executorId), "makeOffers")
             case None =>
               // Ignoring the update since we don't know about the executor.
               logWarning(s"Ignored task status update ($taskId state $state) " +
@@ -380,7 +382,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Launch tasks returned by a set of resource offers
     private def launchTasks(tasks: Seq[Seq[TaskDescription]]): Unit = {
       for (task <- tasks.flatten) {
-        val serializedTask = TaskDescription.encode(task)
+        val serializedTask = time(TaskDescription.encode(task), "encode")
         if (serializedTask.limit() >= maxRpcMessageSize) {
           Option(scheduler.taskIdToTaskSetManager.get(task.taskId)).foreach { taskSetMgr =>
             try {
@@ -410,7 +412,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
             s"${executorData.executorHost}.")
 
-          time(executorData.executorEndpoint.send(LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch")
+          time(executorData.executorEndpoint.send(
+            LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch"
+          )
         }
       }
     }
