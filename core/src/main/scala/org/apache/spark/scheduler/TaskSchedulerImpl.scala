@@ -498,6 +498,7 @@ private[spark] class TaskSchedulerImpl(
     if (!hostToExecutors.contains(offer.host)) {
       hostToExecutors(offer.host) = new mutable.HashSet[String]()
     }
+
     if (!executorIdToRunningTaskIds.contains(offer.executorId)) {
       hostToExecutors(offer.host) += offer.executorId
       executorAdded(offer.executorId, offer.host)

@@ -159,11 +159,20 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
-        if (TaskState.isFinished(state)) {
-          time(time({}, "nothing"), "time")
+        if (!executorDataMap.contains(executorId)) {
+          // Ignoring the update since we don't know about the executor.
+          logWarning(s"Ignored task status update ($taskId state $state) " +
+            s"from unknown executor with ID $executorId")
+        } else {
+          val executorInfo = executorDataMap(executorId)
 
-          time(executorDataMap.get(executorId) match {
-            case Some(executorInfo) =>
+          if (TaskState.isFinished(state)) {
+            time(time({}, "nothing"), "time")
+            time(logInfo("dummy printline"), "logInfo")
+            time(System.nanoTime(), "nanoTime")
+
+            time({
+              executorInfo.assignedTask = false
               val rpId = executorInfo.resourceProfileId
               val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
               val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
@@ -173,14 +182,11 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   r.release(v.addresses)
                 }
               }
-              if (taskQueue.isDefined) {
+              if (taskQueue.isDefined && !executorInfo.assignedTask) {
                 time(makeOffers(executorId, taskQueue.get), "makeOffers")
               }
-            case None =>
-              // Ignoring the update since we don't know about the executor.
-              logWarning(s"Ignored task status update ($taskId state $state) " +
-                s"from unknown executor with ID $executorId")
-          }, "statusUpdate")
+            }, "statusUpdate")
+          }
         }
 
       case ReviveOffers =>
@@ -189,7 +195,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             makeQueue(executorId)
           }
 
-          if (executor.assignedQueue.isDefined && !isExecutorActive(executorId)) {
+          if (executor.assignedQueue.isDefined && !executor.assignedTask) {
             time(makeOffers(executorId, executor.assignedQueue.get), "makeOffers")
           }
         }
@@ -367,7 +373,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Make fake resource offers on just one executor
     private def makeOffers(executorId: String, taskQueue: String): Unit = {
       // Make sure no executor is killed while some task is launching on it
-      val taskDesc = withLock {
+      val taskDesc = time(withLock {
         // Filter out executors under killing
         if (!isExecutorActive(executorId)) return;
 
@@ -382,7 +388,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           }, resourceProfileId = executorData.resourceProfileId
         )
         time(scheduler.nextOffer(offer, taskQueue), "nextOffer")
-      }
+      }, "locked")
 
       if (taskDesc.isDefined) {
         time(launchTask(taskDesc.get), "launchTask")
@@ -408,6 +414,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       }
       else {
         val executorData = executorDataMap(task.executorId)
+        executorData.assignedTask = true
         // Do resources allocation here. The allocated resources will get released after the task
         // finishes.
         val rpId = executorData.resourceProfileId
