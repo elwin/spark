@@ -359,7 +359,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Make fake resource offers on just one executor
     private def makeOffers(executorId: String): Unit = {
       // Make sure no executor is killed while some task is launching on it
-      val taskDescs = withLock {
+      val taskDescs = time(withLock {
         // Filter out executors under killing
         if (isExecutorActive(executorId)) {
           val executorData = executorDataMap(executorId)
@@ -369,13 +369,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
               executorData.resourcesInfo.map { case (rName, rInfo) =>
                 (rName, rInfo.availableAddrs.toBuffer)
               }, executorData.resourceProfileId))
-          time(scheduler.resourceOffers(workOffers, false), "resourceOffers")
+          time(scheduler.resourceOffers(workOffers, false), "nextOffer")
         } else {
           Seq.empty
         }
-      }
+      }, "locked")
       if (taskDescs.nonEmpty) {
-        launchTasks(taskDescs)
+        time(launchTasks(taskDescs), "launchTasks")
       }
     }
 
