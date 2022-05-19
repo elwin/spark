@@ -20,12 +20,9 @@ package org.apache.spark.scheduler.cluster
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import javax.annotation.concurrent.GuardedBy
-
 import scala.collection.mutable.{HashMap, HashSet}
 import scala.concurrent.Future
-
 import org.apache.hadoop.security.UserGroupInformation
-
 import org.apache.spark.{ExecutorAllocationClient, SparkEnv, SparkException, TaskState}
 import org.apache.spark.deploy.SparkHadoopUtil
 import org.apache.spark.deploy.security.HadoopDelegationTokenManager
@@ -33,7 +30,7 @@ import org.apache.spark.executor.ExecutorLogUrlHandler
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
 import org.apache.spark.internal.config.Network._
-import org.apache.spark.resource.ResourceProfile
+import org.apache.spark.resource.{ResourceInformation, ResourceProfile}
 import org.apache.spark.rpc._
 import org.apache.spark.scheduler._
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages._
@@ -173,15 +170,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
             time({
               executorInfo.assignedTask = false
-              val rpId = executorInfo.resourceProfileId
-              val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
-              val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
-              executorInfo.freeCores += taskCpus
-              resources.foreach { case (k, v) =>
-                executorInfo.resourcesInfo.get(k).foreach { r =>
-                  r.release(v.addresses)
-                }
-              }
+              releaseExecutor(executorId, resources)
               if (taskQueue.isDefined && !executorInfo.assignedTask) {
                 time(makeOffers(executorId, taskQueue.get), "makeOffers")
               }
@@ -353,12 +342,16 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     private def makeQueue(executorId: String): Option[String] = {
-      withLock {
+      withLock { // todo lock needed?
 
         val executorData = executorDataMap(executorId)
         for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
           logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
           executorData.assignedQueue = Some(taskSet.name)
+
+          scheduler.registerExecutor(executorId, executorData.executorHost)
+//          allocateExecutor(executorId, null) // todo Fill
+
           return Some(taskSet.name)
         }
 
@@ -372,11 +365,12 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Make fake resource offers on just one executor
     private def makeOffers(executorId: String, taskQueue: String): Unit = {
       // Make sure no executor is killed while some task is launching on it
+      val executorData = executorDataMap(executorId)
+
       val taskDesc = time(withLock {
         // Filter out executors under killing
         if (!isExecutorActive(executorId)) return;
 
-        val executorData = executorDataMap(executorId)
         val offer = WorkerOffer(
           executorId = executorId,
           host = executorData.executorHost,
@@ -386,15 +380,44 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             (rName, rInfo.availableAddrs.toBuffer)
           }, resourceProfileId = executorData.resourceProfileId
         )
-        val taskDesc = time(scheduler.nextOffer(offer, taskQueue), "nextOffer")
-        if (taskDesc.isEmpty) {
-          executorData.assignedQueue = None
-        }
 
-        taskDesc
+        time(scheduler.nextOffer(offer, taskQueue), "nextOffer")
       }, "locked")
 
-      if (taskDesc.isDefined) time(launchTask(taskDesc.get), "launchTask")
+      if (taskDesc.isDefined) {
+        time(launchTask(taskDesc.get), "launchTask")
+      } else {
+        executorData.assignedQueue = None
+//        releaseExecutor(executorId, null) // TODO add actual resources
+      }
+    }
+
+    private def allocateExecutor(executorId: String, resources: Map[String, ResourceInformation]): Unit = {
+      val executorData = executorDataMap(executorId)
+      // Do resources allocation here. The allocated resources will get released after the task
+      // finishes.
+      val rpId = executorData.resourceProfileId
+      val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
+      val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
+      executorData.freeCores -= taskCpus
+      resources.foreach { case (rName, rInfo) =>
+        assert(executorData.resourcesInfo.contains(rName))
+        executorData.resourcesInfo(rName).acquire(rInfo.addresses)
+      }
+    }
+
+    private def releaseExecutor(executorId: String, resources: Map[String, ResourceInformation]): Unit = {
+      val executorData = executorDataMap(executorId)
+
+      val rpId = executorData.resourceProfileId
+      val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
+      val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
+      executorData.freeCores += taskCpus
+      resources.foreach { case (k, v) =>
+        executorData.resourcesInfo.get(k).foreach { r =>
+          r.release(v.addresses)
+        }
+      }
     }
 
     private def launchTask(task: TaskDescription): Unit = {
@@ -417,14 +440,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         executorData.assignedTask = true
         // Do resources allocation here. The allocated resources will get released after the task
         // finishes.
-        val rpId = executorData.resourceProfileId
-        val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
-        val taskCpus = ResourceProfile.getTaskCpusOrDefaultForProfile(prof, conf)
-        executorData.freeCores -= taskCpus
-        task.resources.foreach { case (rName, rInfo) =>
-          assert(executorData.resourcesInfo.contains(rName))
-          executorData.resourcesInfo(rName).acquire(rInfo.addresses)
-        }
+        allocateExecutor(task.executorId, task.resources)
 
         logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
           s"${executorData.executorHost}.")

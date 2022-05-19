@@ -494,18 +494,20 @@ private[spark] class TaskSchedulerImpl(
     }
   }
 
+  def registerExecutor(executorId: String, host: String): Unit = {
+    if (!hostToExecutors.contains(host)) {
+      hostToExecutors(host) = new mutable.HashSet[String]()
+    }
+
+    if (!executorIdToRunningTaskIds.contains(executorId)) {
+      hostToExecutors(host) += executorId
+      executorAdded(executorId, host)
+      executorIdToHost(executorId) = host
+      executorIdToRunningTaskIds(executorId) = mutable.HashSet[Long]()
+    }
+  }
+
   def nextOffer(offer: WorkerOffer, taskQueue: String): Option[TaskDescription] = synchronized {
-    if (!hostToExecutors.contains(offer.host)) {
-      hostToExecutors(offer.host) = new mutable.HashSet[String]()
-    }
-
-    if (!executorIdToRunningTaskIds.contains(offer.executorId)) {
-      hostToExecutors(offer.host) += offer.executorId
-      executorAdded(offer.executorId, offer.host)
-      executorIdToHost(offer.executorId) = offer.host
-      executorIdToRunningTaskIds(offer.executorId) = mutable.HashSet[Long]()
-    }
-
 
     val taskSetManager = rootPool.getSchedulableByName(taskQueue).asInstanceOf[TaskSetManager]
     if (taskSetManager == null) {
@@ -515,16 +517,14 @@ private[spark] class TaskSchedulerImpl(
 
     val taskResourceAssignments = mutable.HashMap[String, ResourceInformation]().toMap
 
-    val (taskDesc, rejected, _) = taskSetManager.resourceOffer(
+    val (taskDesc, _, _) = taskSetManager.resourceOffer(
       execId = offer.executorId,
       host = offer.host,
       maxLocality = TaskLocality.ANY,
       taskResourceAssignments = taskResourceAssignments,
     )
 
-    if (rejected) {
-      throw new Exception("ouf, offer rejected")
-    } else if (taskDesc.isDefined) {
+    if (taskDesc.isDefined) {
       addRunningTask(taskDesc.get.taskId, taskDesc.get.executorId, taskSetManager)
       return taskDesc
     }
