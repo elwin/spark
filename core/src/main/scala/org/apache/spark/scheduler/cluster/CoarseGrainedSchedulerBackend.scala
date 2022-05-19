@@ -154,7 +154,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     override def receive: PartialFunction[Any, Unit] = {
-      case RequestTaskQueue(executorId) => makeQueue(executorId)
+      //      case RequestTaskQueue(executorId) => makeQueue(executorId)
 
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
@@ -352,21 +352,20 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             "messages.")))
     }
 
-    private def makeQueue(executorId: String): Unit = {
+    private def makeQueue(executorId: String): Option[String] = {
       withLock {
 
         val executorData = executorDataMap(executorId)
         for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
           logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
-          executorData.executorEndpoint.send(SetTaskQueue(Some(taskSet.name)))
           executorData.assignedQueue = Some(taskSet.name)
-          return
+          return Some(taskSet.name)
         }
 
-
         logInfo("no more task sets :(")
-        executorData.executorEndpoint.send(SetTaskQueue(None))
         executorData.assignedQueue = None
+
+        return None
       }
     }
 
@@ -387,14 +386,15 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             (rName, rInfo.availableAddrs.toBuffer)
           }, resourceProfileId = executorData.resourceProfileId
         )
-        time(scheduler.nextOffer(offer, taskQueue), "nextOffer")
+        val taskDesc = time(scheduler.nextOffer(offer, taskQueue), "nextOffer")
+        if (taskDesc.isEmpty) {
+          executorData.assignedQueue = None
+        }
+
+        taskDesc
       }, "locked")
 
-      if (taskDesc.isDefined) {
-        time(launchTask(taskDesc.get), "launchTask")
-      } else {
-        makeQueue(executorId)
-      }
+      if (taskDesc.isDefined) time(launchTask(taskDesc.get), "launchTask")
     }
 
     private def launchTask(task: TaskDescription): Unit = {
