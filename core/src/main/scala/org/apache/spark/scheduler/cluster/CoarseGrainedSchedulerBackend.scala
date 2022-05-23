@@ -172,7 +172,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             time({
               executorInfo.assignedTask = false
               releaseExecutor(executorId, resources)
-              if (taskQueue.isDefined && !executorInfo.assignedTask) {
+              if (executorInfo.assignedQueue.isDefined && !executorInfo.assignedTask) {
                 time(makeOffers(executorId, taskQueue.get), "makeOffers")
               }
             }, "statusUpdate")
