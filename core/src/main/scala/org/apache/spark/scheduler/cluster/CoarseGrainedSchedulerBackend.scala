@@ -449,6 +449,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         time(executorData.executorEndpoint.send(
           LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch"
         )
+        time(executorData.executorEndpoint.send(LaunchTaskLight(task.taskId)), "rpcLaunchLight")
       }
     }
 

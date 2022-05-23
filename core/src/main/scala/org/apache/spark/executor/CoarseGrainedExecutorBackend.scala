@@ -190,6 +190,8 @@ private[spark] class CoarseGrainedExecutorBackend(
         taskResources(taskDesc.taskId) = taskDesc.resources
         executor.launchTask(this, taskDesc)
       }
+    case LaunchTaskLight(taskId: Long) =>
+      logInfo(s"received launchTaskLight $taskId")
 
     case KillTask(taskId, _, interruptThread, reason) =>
       if (executor == null) {
