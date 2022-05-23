@@ -173,7 +173,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
               executorInfo.assignedTask = false
               releaseExecutor(executorId, resources)
               if (executorInfo.assignedQueue.isDefined && !executorInfo.assignedTask) {
-                time(makeOffers(executorId, taskQueue.get), "makeOffers")
+                time(makeOffers(executorId, executorInfo.assignedQueue.get), "makeOffers")
               }
             }, "statusUpdate")
           }
@@ -186,7 +186,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           }
 
           if (executor.assignedQueue.isDefined && !executor.assignedTask) {
-            time(makeOffers(executorId, executor.assignedQueue.get), "makeOffers")
+            time(makeOffers(executorId, executor.assignedQueue.get), "reviveMakeOffers")
           }
         }
 
@@ -366,7 +366,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Make fake resource offers on just one executor
     private def makeOffers(executorId: String, taskQueue: String): Unit = {
       // Make sure no executor is killed while some task is launching on it
-      val executorData = executorDataMap(executorId)
+      val executorData = time(executorDataMap(executorId), "executorLookup")
 
       val taskDesc = time(withLock {
         // Filter out executors under killing
