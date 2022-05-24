@@ -43,7 +43,7 @@ private[spark] object CoarseGrainedClusterMessages {
   // Driver to executors
   case class LaunchTask(data: SerializableBuffer) extends CoarseGrainedClusterMessage
 
-  case class LaunchTaskLight(taskId: Long) extends  CoarseGrainedClusterMessage
+  case class LaunchTaskLight(data: SerializableBuffer) extends  CoarseGrainedClusterMessage
 
   case class SetTaskQueue(taskQueue: Option[String]) extends CoarseGrainedClusterMessage
 

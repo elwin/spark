@@ -151,8 +151,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     override def receive: PartialFunction[Any, Unit] = {
-      //      case RequestTaskQueue(executorId) => makeQueue(executorId)
-
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
@@ -343,24 +341,21 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     private def makeQueue(executorId: String): Option[String] = {
-      withLock { // todo lock needed?
+      val executorData = executorDataMap(executorId)
+      for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
 
-        val executorData = executorDataMap(executorId)
-        for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
-          logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
-          executorData.assignedQueue = Some(taskSet.name)
+        launchQueue(new TaskQueue(
 
-          scheduler.registerExecutor(executorId, executorData.executorHost)
-//          allocateExecutor(executorId, null) // todo Fill
+        ))
 
-          return Some(taskSet.name)
-        }
 
-        logInfo("no more task sets :(")
-        executorData.assignedQueue = None
-
-        return None
+        return Some(taskSet.name)
       }
+
+      logInfo("no more task sets :(")
+      executorData.assignedQueue = None
+
+      None
     }
 
     // Make fake resource offers on just one executor
@@ -389,7 +384,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         time(launchTask(taskDesc.get), "launchTask")
       } else {
         executorData.assignedQueue = None
-//        releaseExecutor(executorId, null) // TODO add actual resources
+        //        releaseExecutor(executorId, null) // TODO add actual resources
       }
     }
 
@@ -420,6 +415,28 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         }
       }
     }
+
+
+    private def launchQueue(taskQueue: TaskQueue): Unit = {
+      val serializedTaskQueue = TaskQueue.encode(taskQueue)
+      if (serializedTaskQueue.limit() >= maxRpcMessageSize) {
+        val msg = s"Serialized task queue was ${serializedTaskQueue.limit()} bytes (only $maxRpcMessageSize bytes allowed)"
+        logError(msg)
+      } else {
+        val executorData = executorDataMap(taskQueue.executorId)
+        executorData.assignedQueue = Some(taskQueue.name)
+        // Do resources allocation here. The allocated resources will get released after the task
+        // finishes.
+        scheduler.registerExecutor(taskQueue.executorId, executorData.executorHost)
+        allocateExecutor(taskQueue.executorId, taskQueue.resources)
+
+        logDebug(s"Setting queue ${taskQueue.name} on executor id: ${taskQueue.executorId} hostname: " +
+          s"${executorData.executorHost}.")
+
+        executorData.executorEndpoint.send(LaunchTaskLight(new SerializableBuffer(serializedTaskQueue)))
+      }
+    }
+
 
     private def launchTask(task: TaskDescription): Unit = {
       val serializedTask = time(TaskDescription.encode(task), "encode")

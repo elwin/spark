@@ -41,7 +41,7 @@ import org.apache.spark.rpc._
 import org.apache.spark.scheduler.{ExecutorLossMessage, ExecutorLossReason, TaskDescription}
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages._
 import org.apache.spark.serializer.SerializerInstance
-import org.apache.spark.util.{ChildFirstURLClassLoader, MutableURLClassLoader, SignalUtils, ThreadUtils, Utils}
+import org.apache.spark.util.{ChildFirstURLClassLoader, MutableURLClassLoader, SerializableBuffer, SignalUtils, ThreadUtils, Utils}
 
 private[spark] class CoarseGrainedExecutorBackend(
                                                    override val rpcEnv: RpcEnv,
@@ -190,8 +190,8 @@ private[spark] class CoarseGrainedExecutorBackend(
         taskResources(taskDesc.taskId) = taskDesc.resources
         executor.launchTask(this, taskDesc)
       }
-    case LaunchTaskLight(taskId: Long) =>
-      logInfo(s"received launchTaskLight $taskId")
+    case LaunchTaskLight(data: SerializableBuffer) =>
+      logInfo(s"received launchTaskLight $data")
 
     case KillTask(taskId, _, interruptThread, reason) =>
       if (executor == null) {
