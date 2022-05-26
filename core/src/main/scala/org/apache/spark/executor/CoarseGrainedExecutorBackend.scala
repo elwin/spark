@@ -38,7 +38,7 @@ import org.apache.spark.resource.ResourceProfile
 import org.apache.spark.resource.ResourceProfile._
 import org.apache.spark.resource.ResourceUtils._
 import org.apache.spark.rpc._
-import org.apache.spark.scheduler.{ExecutorLossMessage, ExecutorLossReason, TaskDescription}
+import org.apache.spark.scheduler.{ExecutorLossMessage, ExecutorLossReason, TaskDescription, TaskQueue}
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages._
 import org.apache.spark.serializer.SerializerInstance
 import org.apache.spark.util.{ChildFirstURLClassLoader, MutableURLClassLoader, SerializableBuffer, SignalUtils, ThreadUtils, Utils}
@@ -70,14 +70,14 @@ private[spark] class CoarseGrainedExecutorBackend(
 
   private var _resources = Map.empty[String, ResourceInformation]
 
-  private var currentTaskQueue: Option[String] = None
+  private var currentTaskQueue: Option[TaskQueue] = None
 
   /**
    * Map each taskId to the information about the resource allocated to it, Please refer to
    * [[ResourceInformation]] for specifics.
    * Exposed for testing only.
    */
-  private[executor] val taskResources = new mutable.HashMap[Long, Map[String, ResourceInformation]]
+  private[executor] val taskResources = new mutable.HashMap[String, Map[String, ResourceInformation]]
 
   private var decommissioned = false
 
@@ -177,21 +177,29 @@ private[spark] class CoarseGrainedExecutorBackend(
           exitExecutor(1, "Unable to create executor due to " + e.getMessage, e)
       }
 
-    case SetTaskQueue(taskQueue) =>
-      currentTaskQueue = taskQueue
-      logInfo(s"Set task queue to $taskQueue")
-
     case LaunchTask(data) =>
       if (executor == null) {
         exitExecutor(1, "Received LaunchTask command but executor was null")
       } else {
         val taskDesc = TaskDescription.decode(data.value)
         logInfo("Got assigned task " + taskDesc.taskId)
-        taskResources(taskDesc.taskId) = taskDesc.resources
         executor.launchTask(this, taskDesc)
       }
-    case LaunchTaskLight(data: SerializableBuffer) =>
-      logInfo(s"received launchTaskLight $data")
+
+    case LaunchTaskQueue(data: SerializableBuffer) =>
+      if (executor == null) {
+        exitExecutor(1, "Received LaunchTaskQueue command but executor was null")
+      } else {
+        val taskQueue = TaskQueue.decode(data.value)
+        this.currentTaskQueue = Some(taskQueue)
+        taskResources(taskQueue.name) = taskQueue.resources
+        logInfo(s"received TaskQueue ${taskQueue.name}")
+      }
+
+    case ClearTaskQueue =>
+      this.currentTaskQueue = None
+      logInfo("cleared TaskQueue")
+
 
     case KillTask(taskId, _, interruptThread, reason) =>
       if (executor == null) {
@@ -269,10 +277,10 @@ private[spark] class CoarseGrainedExecutorBackend(
     logInfo(
       s"""elw3: {"type": "status_update", "task_id": $taskId, "state": "$state", "timestamp": ${System.nanoTime()}}"""
     )
-    val resources = taskResources.getOrElse(taskId, Map.empty[String, ResourceInformation])
-    val msg = StatusUpdate(executorId, taskId, state, currentTaskQueue, data, resources)
+    val resources = taskResources.getOrElse(this.currentTaskQueue.get.name, Map.empty[String, ResourceInformation]) // TODO fix
+    val msg = StatusUpdate(executorId, taskId, state, Some(""), data, null)
     if (TaskState.isFinished(state)) {
-      taskResources.remove(taskId)
+      taskResources.remove(this.currentTaskQueue.get.name)
     }
     driver match {
       case Some(driverRef) => driverRef.send(msg)

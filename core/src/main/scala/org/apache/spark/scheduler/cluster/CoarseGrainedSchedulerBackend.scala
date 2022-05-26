@@ -20,7 +20,7 @@ package org.apache.spark.scheduler.cluster
 import java.util.concurrent.{ScheduledExecutorService, TimeUnit}
 import java.util.concurrent.atomic.{AtomicInteger, AtomicReference}
 import javax.annotation.concurrent.GuardedBy
-import scala.collection.mutable.{HashMap, HashSet}
+import scala.collection.mutable.{HashMap, HashSet, Map}
 import scala.concurrent.Future
 import org.apache.hadoop.security.UserGroupInformation
 import org.apache.spark.{ExecutorAllocationClient, SparkEnv, SparkException, TaskState}
@@ -36,6 +36,8 @@ import org.apache.spark.scheduler._
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages._
 import org.apache.spark.scheduler.cluster.CoarseGrainedSchedulerBackend.ENDPOINT_NAME
 import org.apache.spark.util.{RpcUtils, SerializableBuffer, ThreadUtils, Utils}
+
+import scala.collection.{immutable, mutable}
 
 /**
  * A scheduler backend that waits for coarse-grained executors to connect.
@@ -340,22 +342,20 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             "messages.")))
     }
 
-    private def makeQueue(executorId: String): Option[String] = {
+    private def makeQueue(executorId: String): Unit = {
       val executorData = executorDataMap(executorId)
       for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
 
-        launchQueue(new TaskQueue(
+        val taskResourceAssignments = mutable.HashMap[String, ResourceInformation]().toMap
+        val taskQueue = taskSet.queueOffer(executorId, taskResourceAssignments)
 
-        ))
+        launchQueue(taskQueue)
 
-
-        return Some(taskSet.name)
+        return
       }
 
       logInfo("no more task sets :(")
       executorData.assignedQueue = None
-
-      None
     }
 
     // Make fake resource offers on just one executor
@@ -388,7 +388,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       }
     }
 
-    private def allocateExecutor(executorId: String, resources: Map[String, ResourceInformation]): Unit = {
+    private def allocateExecutor(executorId: String, resources: immutable.Map[String, ResourceInformation]): Unit = {
       val executorData = executorDataMap(executorId)
       // Do resources allocation here. The allocated resources will get released after the task
       // finishes.
@@ -402,7 +402,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       }
     }
 
-    private def releaseExecutor(executorId: String, resources: Map[String, ResourceInformation]): Unit = {
+    private def releaseExecutor(executorId: String, resources: mutable.Map[String, ResourceInformation]): Unit = {
       val executorData = executorDataMap(executorId)
 
       val rpId = executorData.resourceProfileId
@@ -433,7 +433,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         logDebug(s"Setting queue ${taskQueue.name} on executor id: ${taskQueue.executorId} hostname: " +
           s"${executorData.executorHost}.")
 
-        executorData.executorEndpoint.send(LaunchTaskLight(new SerializableBuffer(serializedTaskQueue)))
+        executorData.executorEndpoint.send(LaunchTaskQueue(new SerializableBuffer(serializedTaskQueue)))
       }
     }
 
@@ -466,7 +466,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         time(executorData.executorEndpoint.send(
           LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch"
         )
-        time(executorData.executorEndpoint.send(LaunchTaskLight(task.taskId)), "rpcLaunchLight")
       }
     }
 
@@ -732,7 +731,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     executorDataMap.keySet.toSeq
   }
 
-  def getExecutorsWithRegistrationTs(): Map[String, Long] = synchronized {
+  def getExecutorsWithRegistrationTs(): immutable.Map[String, Long] = synchronized {
     executorDataMap.mapValues(v => v.registrationTs).toMap
   }
 
@@ -768,8 +767,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
   }
 
   // this function is for testing only
-  def getExecutorAvailableResources(executorId: String): Map[String, ExecutorResourceInfo] = synchronized {
-    executorDataMap.get(executorId).map(_.resourcesInfo).getOrElse(Map.empty)
+  def getExecutorAvailableResources(executorId: String): immutable.Map[String, ExecutorResourceInfo] = synchronized {
+    executorDataMap.get(executorId).map(_.resourcesInfo).getOrElse(immutable.Map.empty)
   }
 
   // this function is for testing only
@@ -859,7 +858,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
    * @return a future whose evaluation indicates whether the request is acknowledged.
    */
   protected def doRequestTotalExecutors(
-                                         resourceProfileToTotalExecs: Map[ResourceProfile, Int]): Future[Boolean] =
+                                         resourceProfileToTotalExecs: immutable.Map[ResourceProfile, Int]): Future[Boolean] =
     Future.successful(false)
 
   /**

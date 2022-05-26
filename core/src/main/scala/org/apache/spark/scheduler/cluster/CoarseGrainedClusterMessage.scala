@@ -18,12 +18,14 @@
 package org.apache.spark.scheduler.cluster
 
 import java.nio.ByteBuffer
-
+import scala.collection.mutable.Map
 import org.apache.spark.TaskState.TaskState
 import org.apache.spark.resource.{ResourceInformation, ResourceProfile}
 import org.apache.spark.rpc.RpcEndpointRef
 import org.apache.spark.scheduler.{ExecutorLossReason, MiscellaneousProcessDetails}
 import org.apache.spark.util.SerializableBuffer
+
+import scala.collection.immutable
 
 private[spark] sealed trait CoarseGrainedClusterMessage extends Serializable
 
@@ -43,9 +45,9 @@ private[spark] object CoarseGrainedClusterMessages {
   // Driver to executors
   case class LaunchTask(data: SerializableBuffer) extends CoarseGrainedClusterMessage
 
-  case class LaunchTaskLight(data: SerializableBuffer) extends  CoarseGrainedClusterMessage
+  case class LaunchTaskQueue(data: SerializableBuffer) extends CoarseGrainedClusterMessage
 
-  case class SetTaskQueue(taskQueue: Option[String]) extends CoarseGrainedClusterMessage
+  case class ClearTaskQueue() extends CoarseGrainedClusterMessage
 
   case class KillTask(taskId: Long, executor: String, interruptThread: Boolean, reason: String)
     extends CoarseGrainedClusterMessage
@@ -69,9 +71,9 @@ private[spark] object CoarseGrainedClusterMessages {
                                executorRef: RpcEndpointRef,
                                hostname: String,
                                cores: Int,
-                               logUrls: Map[String, String],
-                               attributes: Map[String, String],
-                               resources: Map[String, ResourceInformation],
+                               logUrls: immutable.Map[String, String],
+                               attributes: immutable.Map[String, String],
+                               resources: immutable.Map[String, ResourceInformation],
                                resourceProfileId: Int)
     extends CoarseGrainedClusterMessage
 
