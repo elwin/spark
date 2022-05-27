@@ -1,3 +1,5 @@
+BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+
 clean:
 	./build/mvn -pl :spark-core_2.12 clean
 
@@ -5,7 +7,7 @@ build-core:
 	./elwin/core.sh
 
 push:
-	./elwin/docker.sh latest
+	./elwin/docker.sh $(BRANCH)
 
 start-cluster:
 	./dist/sbin/start-master.sh
