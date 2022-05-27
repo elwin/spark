@@ -432,8 +432,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
         logDebug(s"Setting queue ${taskQueue.name} on executor id: ${taskQueue.executorId} hostname: " +
           s"${executorData.executorHost}.")
-
-        executorData.executorEndpoint.send(LaunchTaskLight(new SerializableBuffer(serializedTaskQueue)))
       }
     }
 

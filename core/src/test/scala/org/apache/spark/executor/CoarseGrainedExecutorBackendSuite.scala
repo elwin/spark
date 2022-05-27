@@ -312,14 +312,14 @@ class CoarseGrainedExecutorBackendSuite extends SparkFunSuite
       backend.self.send(LaunchTask(new SerializableBuffer(serializedTaskDescription)))
       eventually(timeout(10.seconds)) {
         assert(backend.taskResources.size == 1)
-        val resources = backend.taskResources(taskId)
+        val resources = backend.taskResources("taskId")
         assert(resources(GPU).addresses sameElements Array("0", "1"))
       }
 
       // Update the status of a running task shall not affect `taskResources` map.
       backend.statusUpdate(taskId, TaskState.RUNNING, data)
       assert(backend.taskResources.size == 1)
-      val resources = backend.taskResources(taskId)
+      val resources = backend.taskResources("taskId")
       assert(resources(GPU).addresses sameElements Array("0", "1"))
 
       // Update the status of a finished task shall remove the entry from `taskResources` map.
