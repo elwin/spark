@@ -187,6 +187,8 @@ private[spark] class CoarseGrainedExecutorBackend(
       }
 
     case LaunchTaskQueue(data: SerializableBuffer) =>
+      logInfo("received launchTaskQueue")
+
       if (executor == null) {
         exitExecutor(1, "Received LaunchTaskQueue command but executor was null")
       } else {
@@ -274,11 +276,17 @@ private[spark] class CoarseGrainedExecutorBackend(
   }
 
   override def statusUpdate(taskId: Long, state: TaskState, data: ByteBuffer): Unit = {
+    var name: Option[String] = None
+    if (currentTaskQueue.isDefined) {
+      name = Some(currentTaskQueue.get.name)
+    }
+
     logInfo(
-      s"""elw3: {"type": "status_update", "task_id": $taskId, "state": "$state", "timestamp": ${System.nanoTime()}}"""
+      s"""elw3: {"type": "status_update", "task_id": $taskId, "queue": "$name", "state": "$state", "timestamp": ${System.nanoTime()}}"""
     )
-    val resources = taskResources.getOrElse(this.currentTaskQueue.get.name, Map.empty[String, ResourceInformation])
-    val msg = StatusUpdate(executorId, taskId, state, Some(currentTaskQueue.get.name), data, resources)
+
+    val resources = taskResources.getOrElse(name.orNull, Map.empty[String, ResourceInformation])
+    val msg = StatusUpdate(executorId, taskId, state, Some(""), data, resources)
     if (TaskState.isFinished(state)) {
       taskResources.remove(currentTaskQueue.get.name)
     }

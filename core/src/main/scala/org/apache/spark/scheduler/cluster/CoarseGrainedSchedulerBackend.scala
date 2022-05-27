@@ -154,7 +154,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
-        logInfo(s"""elw3: {"type": "status_update", "state": "$state", "task": $taskId, "executor_id": "$executorId", "timestamp": ${System.nanoTime()}}""")
+        logInfo(s"""elw3: {"type": "status_update", "state": "$state", "task": $taskId, "queue": "$taskQueue", "executor_id": "$executorId", "timestamp": ${System.nanoTime()}}""")
         if (!executorDataMap.contains(executorId)) {
           // Ignoring the update since we don't know about the executor.
           logWarning(s"Ignored task status update ($taskId state $state) " +
@@ -340,22 +340,20 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             "messages.")))
     }
 
-    private def makeQueue(executorId: String): Option[String] = {
-      val executorData = executorDataMap(executorId)
+    private def makeQueue(executorId: String): Unit = {
+      val   executorData = executorDataMap(executorId)
       for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
 
-//        launchQueue(new TaskQueue(
-//
-//        ))
+        val taskResourceAssignments = HashMap[String, ResourceInformation]().toMap
+        val taskQueue = taskSet.queueOffer(executorId, taskResourceAssignments)
 
+        launchTaskQueue(taskQueue)
 
-        return Some(taskSet.name)
+        return
       }
 
       logInfo("no more task sets :(")
       executorData.assignedQueue = None
-
-      None
     }
 
     // Make fake resource offers on just one executor
@@ -417,7 +415,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
 
-    private def launchQueue(taskQueue: TaskQueue): Unit = {
+    private def launchTaskQueue(taskQueue: TaskQueue): Unit = {
       val serializedTaskQueue = TaskQueue.encode(taskQueue)
       if (serializedTaskQueue.limit() >= maxRpcMessageSize) {
         val msg = s"Serialized task queue was ${serializedTaskQueue.limit()} bytes (only $maxRpcMessageSize bytes allowed)"
@@ -430,7 +428,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         scheduler.registerExecutor(taskQueue.executorId, executorData.executorHost)
         allocateExecutor(taskQueue.executorId, taskQueue.resources)
 
-        logDebug(s"Setting queue ${taskQueue.name} on executor id: ${taskQueue.executorId} hostname: " +
+        executorData.executorEndpoint.send(LaunchTaskQueue(new SerializableBuffer(serializedTaskQueue)))
+
+        logInfo(s"Setting queue ${taskQueue.name} on executor id: ${taskQueue.executorId} hostname: " +
           s"${executorData.executorHost}.")
       }
     }

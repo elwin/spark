@@ -415,6 +415,37 @@ private[spark] class TaskSetManager(
     }
   }
 
+  def queueOffer(
+                  execID: String,
+                  taskResourceAssignments: Map[String, ResourceInformation],
+                ): TaskQueue = {
+    val task = tasks(0)
+
+    // Serialize and return the task
+    val serializedTask: ByteBuffer = try {
+      ser.serialize(task)
+    } catch {
+      // If the task cannot be serialized, then there's no point to re-attempt the task,
+      // as it will always fail. So just abort the whole task-set.
+      case NonFatal(e) =>
+        val msg = s"Failed to serialize task ${task.jobId}(0), not attempting to retry it."
+        logError(msg, e)
+        abort(s"$msg Exception during serialization: $e")
+        throw new TaskNotSerializableException(e)
+    }
+
+    new TaskQueue(
+      executorId = execID,
+      name = this.name,
+      addedFiles = addedFiles,
+      addedJars = addedJars,
+      addedArchives = addedArchives,
+      properties = task.localProperties,
+      resources = taskResourceAssignments,
+      serializedTask = serializedTask,
+    )
+  }
+
   /**
    * Respond to an offer of a single executor from the scheduler by finding a task
    *

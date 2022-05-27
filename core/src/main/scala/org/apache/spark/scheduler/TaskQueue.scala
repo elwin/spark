@@ -150,12 +150,8 @@ private[spark] object TaskQueue {
 
   def decode(byteBuffer: ByteBuffer): TaskQueue = {
     val dataIn = new DataInputStream(new ByteBufferInputStream(byteBuffer))
-    val taskId = dataIn.readLong()
-    val attemptNumber = dataIn.readInt()
     val executorId = dataIn.readUTF()
     val name = dataIn.readUTF()
-    val index = dataIn.readInt()
-    val partitionId = dataIn.readInt()
 
     // Read files.
     val taskFiles = deserializeStringLongMap(dataIn)
