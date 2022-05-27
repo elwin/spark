@@ -8,6 +8,10 @@ fi
 REPO=ghcr.io/elwin/spark
 TAG=$1
 
+
 IMAGE_NAME="${REPO}:${TAG}"
+
+echo "Pushing to \"${IMAGE_NAME}\""
+
 docker build -f elwin/Dockerfile -t "${IMAGE_NAME}" elwin
 docker push "${IMAGE_NAME}"
