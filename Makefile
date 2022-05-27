@@ -1,3 +1,6 @@
+clean:
+	./build/mvn -pl :spark-core_2.12 clean
+
 build-core:
 	./elwin/core.sh
 
