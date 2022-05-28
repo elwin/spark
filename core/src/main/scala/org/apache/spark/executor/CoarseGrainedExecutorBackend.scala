@@ -177,28 +177,21 @@ private[spark] class CoarseGrainedExecutorBackend(
           exitExecutor(1, "Unable to create executor due to " + e.getMessage, e)
       }
 
-    case LaunchTask(data) =>
+    case LaunchTask(taskId, attemptNumber, executorId, name, index, partitionId) =>
       if (executor == null) {
         exitExecutor(1, "Received LaunchTask command but executor was null")
       } else if (currentTaskQueue.isEmpty) {
         logError("Received task but no taskQueue defined")
       } else {
-        val taskDescDecoded = TaskDescription.decode(data.value)
-
-//        // TODO check that task queue matches
         val taskQueue = currentTaskQueue.get
-//        if (taskQueue.name != taskDescDecoded.name) {
-//          logError(s"xyz: ${taskQueue.name} instead of ${taskDescDecoded.name}")
-//        }
 
-//
         val taskDesc = new TaskDescription(
-          taskId = taskDescDecoded.taskId,
-          attemptNumber = taskDescDecoded.attemptNumber,
-          executorId = taskDescDecoded.executorId,
-          name = taskDescDecoded.name,
-          index = taskDescDecoded.index,
-          partitionId = taskDescDecoded.partitionId,
+          taskId = taskId,
+          attemptNumber = attemptNumber,
+          executorId = executorId,
+          name = name,
+          index = index,
+          partitionId = partitionId,
           addedFiles = taskQueue.addedFiles,
           addedJars = taskQueue.addedJars,
           addedArchives = taskQueue.addedArchives,
@@ -206,6 +199,9 @@ private[spark] class CoarseGrainedExecutorBackend(
           resources = taskQueue.resources,
           serializedTask = taskQueue.serializedTask,
         )
+
+        // serializedTask is shared amongst all executors and needs to be reset
+        // after each deserialization. Not thread safe.
         taskDesc.serializedTask.rewind()
 
 

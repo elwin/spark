@@ -41,7 +41,7 @@ import org.apache.spark.rpc.RpcEnv
 import org.apache.spark.scheduler.TaskDescription
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages.LaunchTask
 import org.apache.spark.serializer.JavaSerializer
-import org.apache.spark.util.{SerializableBuffer, Utils}
+import org.apache.spark.util.{Utils}
 
 class CoarseGrainedExecutorBackendSuite extends SparkFunSuite
     with LocalSparkContext with MockitoSugar {
@@ -309,7 +309,14 @@ class CoarseGrainedExecutorBackendSuite extends SparkFunSuite
       backend.rpcEnv.setupEndpoint("Executor 1", backend)
 
       // Launch a new task shall add an entry to `taskResources` map.
-      backend.self.send(LaunchTask(new SerializableBuffer(serializedTaskDescription)))
+      backend.self.send(LaunchTask(
+        taskDescription.taskId,
+        taskDescription.attemptNumber,
+        taskDescription.executorId,
+        taskDescription.name,
+        taskDescription.index,
+        taskDescription.partitionId,
+      ))
       eventually(timeout(10.seconds)) {
         assert(backend.taskResources.size == 1)
         val resources = backend.taskResources("taskId")

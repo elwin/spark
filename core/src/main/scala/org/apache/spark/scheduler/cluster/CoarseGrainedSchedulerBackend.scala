@@ -341,7 +341,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     private def makeQueue(executorId: String): Unit = {
-      val   executorData = executorDataMap(executorId)
+      val executorData = executorDataMap(executorId)
       for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
 
         val taskResourceAssignments = HashMap[String, ResourceInformation]().toMap
@@ -462,8 +462,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           s"${executorData.executorHost}.")
 
         time(executorData.executorEndpoint.send(
-          LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch"
-        )
+          LaunchTask(task.taskId, task.attemptNumber, task.executorId, task.name, task.index, task.partitionId),
+        ), "rpcLaunch")
       }
     }
 
