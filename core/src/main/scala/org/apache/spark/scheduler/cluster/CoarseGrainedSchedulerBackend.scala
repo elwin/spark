@@ -376,7 +376,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         }
       }, "locked")
       if (taskDescs.nonEmpty) {
-        time(launchTasks(taskDescs), "launchTasks")
+        time(launchTasks(taskDescs), "launchTask")
       }
     }
 
