@@ -163,9 +163,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           val executorInfo = executorDataMap(executorId)
 
           if (TaskState.isFinished(state)) {
-            time(time({}, "nothing"), "time")
-            time(logInfo("dummy printline"), "logInfo")
-            time(System.nanoTime(), "nanoTime")
 
             time({
               executorInfo.assignedTask = false
