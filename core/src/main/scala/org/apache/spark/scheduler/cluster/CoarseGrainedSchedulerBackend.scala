@@ -158,9 +158,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         scheduler.statusUpdate(taskId, state, data.value)
         logInfo(s"""elw3: {"type": "status_update", "state": "$state", "task": $taskId, "executor_id": "$executorId", "timestamp": ${System.nanoTime()}}""")
         if (TaskState.isFinished(state)) {
-          time(time({}, "nothing"), "time")
-          time(logInfo("dummy printline"), "logInfo")
-          time(System.nanoTime(), "nanoTime")
 
           time(executorDataMap.get(executorId) match {
             case Some(executorInfo) =>
