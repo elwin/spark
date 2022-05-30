@@ -29,7 +29,6 @@ import org.apache.spark.deploy.security.HadoopDelegationTokenManager
 import org.apache.spark.executor.ExecutorLogUrlHandler
 import org.apache.spark.internal.Logging
 import org.apache.spark.internal.config._
-import org.apache.spark.internal.config.Network._
 import org.apache.spark.resource.{ResourceInformation, ResourceProfile}
 import org.apache.spark.rpc._
 import org.apache.spark.scheduler._
@@ -166,13 +165,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
             time({
               executorInfo.assignedTask = false
-              releaseExecutor(executorId, resources)
               if (executorInfo.assignedQueue.isDefined && !executorInfo.assignedTask) {
                 time(makeOffers(executorId, executorInfo.assignedQueue.get), "makeOffers")
               }
             }, "statusUpdate")
           }
         }
+        // todo: release resources
 
       case ReviveOffers =>
         for ((executorId, executor) <- executorDataMap) {
@@ -362,24 +361,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         // Filter out executors under killing
         if (!isExecutorActive(executorId)) return;
 
-        val offer = WorkerOffer(
-          executorId = executorId,
-          host = executorData.executorHost,
-          cores = executorData.freeCores,
-          address = Some(executorData.executorAddress.hostPort),
-          resources = executorData.resourcesInfo.map { case (rName, rInfo) =>
-            (rName, rInfo.availableAddrs.toBuffer)
-          }, resourceProfileId = executorData.resourceProfileId
-        )
-
-        time(scheduler.nextOffer(offer, taskQueue), "nextOffer")
+        time(scheduler.nextOffer(executorId, executorData.executorHost, taskQueue), "nextOffer")
       }, "locked")
 
       if (taskDesc.isDefined) {
         time(launchTask(taskDesc.get), "launchTask")
       } else {
         executorData.assignedQueue = None
-        //        releaseExecutor(executorId, null) // TODO add actual resources
       }
     }
 
@@ -397,6 +385,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       }
     }
 
+    // todo
     private def releaseExecutor(executorId: String, resources: Map[String, ResourceInformation]): Unit = {
       val executorData = executorDataMap(executorId)
 
@@ -434,34 +423,15 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
 
     private def launchTask(task: TaskDescription): Unit = {
-      val serializedTask = time(TaskDescription.encode(task), "encode")
-      if (serializedTask.limit() >= maxRpcMessageSize) {
-        Option(scheduler.taskIdToTaskSetManager.get(task.taskId)).foreach { taskSetMgr =>
-          try {
-            var msg = "Serialized task %s:%d was %d bytes, which exceeds max allowed: " +
-              s"${RPC_MESSAGE_MAX_SIZE.key} (%d bytes). Consider increasing " +
-              s"${RPC_MESSAGE_MAX_SIZE.key} or using broadcast variables for large values."
-            msg = msg.format(task.taskId, task.index, serializedTask.limit(), maxRpcMessageSize)
-            taskSetMgr.abort(msg)
-          } catch {
-            case e: Exception => logError("Exception in error callback", e)
-          }
-        }
-      }
-      else {
-        val executorData = executorDataMap(task.executorId)
-        executorData.assignedTask = true
-        // Do resources allocation here. The allocated resources will get released after the task
-        // finishes.
-        allocateExecutor(task.executorId, task.resources)
+      val executorData = executorDataMap(task.executorId)
+      executorData.assignedTask = true
 
-        logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
-          s"${executorData.executorHost}.")
+      logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
+        s"${executorData.executorHost}.")
 
-        time(executorData.executorEndpoint.send(
-          LaunchTask(task.taskId, task.attemptNumber, task.executorId, task.name, task.index, task.partitionId),
-        ), "rpcLaunch")
-      }
+      time(executorData.executorEndpoint.send(
+        LaunchTask(task.taskId, task.attemptNumber, task.executorId, task.name, task.index, task.partitionId),
+      ), "rpcLaunch")
     }
 
     // Remove a disconnected executor from the cluster

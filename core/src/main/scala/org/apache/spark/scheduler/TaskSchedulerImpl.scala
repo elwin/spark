@@ -507,7 +507,7 @@ private[spark] class TaskSchedulerImpl(
     }
   }
 
-  def nextOffer(offer: WorkerOffer, taskQueue: String): Option[TaskDescription] = synchronized {
+  def nextOffer(executorId: String, host: String, taskQueue: String): Option[TaskDescription] = synchronized {
 
     val taskSetManager = rootPool.getSchedulableByName(taskQueue).asInstanceOf[TaskSetManager]
     if (taskSetManager == null) {
@@ -515,13 +515,10 @@ private[spark] class TaskSchedulerImpl(
       return None
     }
 
-    val taskResourceAssignments = mutable.HashMap[String, ResourceInformation]().toMap
-
-    val (taskDesc, _, _) = taskSetManager.resourceOffer(
-      execId = offer.executorId,
-      host = offer.host,
+    val (taskDesc, _, _) = taskSetManager.resourceOfferLight(
+      execId = executorId,
+      host = host,
       maxLocality = TaskLocality.ANY,
-      taskResourceAssignments = taskResourceAssignments,
     )
 
     if (taskDesc.isDefined) {

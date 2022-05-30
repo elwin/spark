@@ -474,17 +474,82 @@ private[spark] class TaskSetManager(
 
     val index = queue.dequeue()
     val curTime = clock.getTimeMillis()
-    val taskDescription = prepareLaunchingTask(
+    val taskDescription = prepareLaunchingTaskLight(
       execId,
       host,
       index = index,
       maxLocality,
       speculative = false,
-      taskResourceAssignments,
       curTime,
     )
 
     (Some(taskDescription), false, index)
+  }
+
+  def resourceOfferLight(
+                          execId: String,
+                          host: String,
+                          maxLocality: TaskLocality.TaskLocality,
+                        ): (Option[TaskDescription], Boolean, Int) = {
+    if (queue.isEmpty) {
+      return (None, false, -1)
+    }
+
+    val index = queue.dequeue()
+    val curTime = clock.getTimeMillis()
+    val taskDescription = prepareLaunchingTaskLight(
+      execId,
+      host,
+      index = index,
+      maxLocality,
+      speculative = false,
+      curTime,
+    )
+
+    (Some(taskDescription), false, index)
+  }
+
+  def prepareLaunchingTaskLight(
+                                 execId: String,
+                                 host: String,
+                                 index: Int,
+                                 taskLocality: TaskLocality.Value,
+                                 speculative: Boolean,
+                                 launchTime: Long): TaskDescription = {
+    // Found a task; do some bookkeeping and return a task description
+    val task = tasks(index)
+    val taskId = sched.newTaskId()
+    // Do various bookkeeping
+    copiesRunning(index) += 1
+    val attemptNum = taskAttempts(index).size
+    val info = new TaskInfo(taskId, index, attemptNum, launchTime,
+      execId, host, taskLocality, speculative)
+    taskInfos(taskId) = info
+    taskAttempts(index) = info :: taskAttempts(index)
+    addRunningTask(taskId)
+
+    // We used to log the time it takes to serialize the task, but task size is already
+    // a good proxy to task serialization time.
+    // val timeTaken = clock.getTime() - startTime
+    val tName = taskName(taskId)
+    logInfo(s"Starting $tName ($host, executor ${info.executorId}, " +
+      s"partition ${task.partitionId}, $taskLocality) ")
+
+    sched.dagScheduler.taskStarted(task, info)
+    new TaskDescription(
+      taskId = taskId,
+      attemptNumber = attemptNum,
+      executorId = execId,
+      name = tName,
+      index = index,
+      partitionId = task.partitionId,
+      addedFiles = null,
+      addedJars = null,
+      addedArchives = null,
+      properties = null,
+      resources = null,
+      serializedTask = null,
+    )
   }
 
   def prepareLaunchingTask(
