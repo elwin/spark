@@ -309,7 +309,8 @@ private[spark] class CoarseGrainedExecutorBackend(
     )
 
     val resources = taskResources.getOrElse(name.orNull, Map.empty[String, ResourceInformation])
-    val msg = StatusUpdate(executorId, taskId, state, Some(""), data, resources)
+    val queue = if (currentTaskQueue.isDefined) Some(currentTaskQueue.get.name) else None
+    val msg = StatusUpdate(executorId, taskId, state, queue, data, resources)
     if (TaskState.isFinished(state)) {
       taskResources.remove(currentTaskQueue.get.name)
     }
