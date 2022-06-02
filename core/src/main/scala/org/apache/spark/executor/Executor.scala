@@ -470,6 +470,7 @@ private[spark] class Executor(
           taskDescription.serializedTask, Thread.currentThread.getContextClassLoader)
         task.localProperties = taskDescription.properties
         task.setTaskMemoryManager(taskMemoryManager)
+        task.partitionId = taskDescription.partitionId
 
         logInfo(
           s"""elw3: {"type": "task_size", "task_id": $taskId, "size": ${taskDescription.serializedTask.position()}, "timestamp": ${System.nanoTime}}"""
