@@ -51,7 +51,7 @@ import org.apache.spark.rdd.RDD
  * @param isBarrier             whether this task belongs to a barrier stage. Spark must launch all the tasks
  *                              at the same time for a barrier stage.
  */
-private[spark] class ResultTask[T, U](
+class ResultTask[T, U](
                                        stageId: Int,
                                        stageAttemptId: Int,
                                        taskBinary: Broadcast[Array[Byte]],
@@ -86,6 +86,7 @@ private[spark] class ResultTask[T, U](
     _executorDeserializeCpuTime = if (threadMXBean.isCurrentThreadCpuTimeSupported) {
       threadMXBean.getCurrentThreadCpuTime - deserializeStartCpuTime
     } else 0L
+
 
     func(context, rdd.iterator(partition, context))
   }

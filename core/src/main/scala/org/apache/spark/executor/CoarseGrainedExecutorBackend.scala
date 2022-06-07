@@ -205,7 +205,7 @@ private[spark] class CoarseGrainedExecutorBackend(
         taskDesc.serializedTask.rewind()
 
 
-        logInfo("Got assigned task " + taskDesc.taskId)
+        logInfo(s"Got assigned task ${taskDesc.taskId} with partition ${partitionId}")
         executor.launchTask(this, taskDesc)
       }
 
