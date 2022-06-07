@@ -434,6 +434,16 @@ private[spark] class TaskSetManager(
         throw new TaskNotSerializableException(e)
     }
 
+    val serializedPartitions: ByteBuffer = try {
+      ser.serialize(taskSet.partitions)
+    } catch {
+      case NonFatal(e) =>
+        logError(s"Failed to serialize partition for TaskSet ${taskSet.id}")
+        throw new TaskNotSerializableException(e)
+    }
+
+    logInfo(s"partitions: ${serializedPartitions.remaining()}")
+
     new TaskQueue(
       executorId = execID,
       name = this.name,
@@ -443,6 +453,7 @@ private[spark] class TaskSetManager(
       properties = task.localProperties,
       resources = taskResourceAssignments,
       serializedTask = serializedTask,
+      serializedPartitions = serializedPartitions,
     )
   }
 
@@ -549,6 +560,7 @@ private[spark] class TaskSetManager(
       properties = null,
       resources = null,
       serializedTask = null,
+      serializedPartition = null,
     )
   }
 
@@ -612,7 +624,9 @@ private[spark] class TaskSetManager(
       addedArchives,
       task.localProperties,
       taskResourceAssignments,
-      serializedTask)
+      serializedTask,
+      null,
+    )
   }
 
   def taskName(tid: Long): String = {

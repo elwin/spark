@@ -198,14 +198,16 @@ private[spark] class CoarseGrainedExecutorBackend(
           properties = taskQueue.properties,
           resources = taskQueue.resources,
           serializedTask = taskQueue.serializedTask,
+          serializedPartition = taskQueue.serializedPartitions,
         )
 
         // serializedTask is shared amongst all executors and needs to be reset
         // after each deserialization. Not thread safe.
         taskDesc.serializedTask.rewind()
+        taskDesc.serializedPartition.rewind()
 
 
-        logInfo("Got assigned task " + taskDesc.taskId)
+        logInfo(s"Got assigned task ${taskDesc.taskId} with partition ${partitionId}")
         executor.launchTask(this, taskDesc)
       }
 

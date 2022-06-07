@@ -370,6 +370,7 @@ abstract class RDD[T: ClassTag](
     if (isCheckpointedAndMaterialized) {
       firstParent[T].iterator(split, context)
     } else {
+      logInfo(s"yyy: ${split.index}")
       compute(split, context)
     }
   }

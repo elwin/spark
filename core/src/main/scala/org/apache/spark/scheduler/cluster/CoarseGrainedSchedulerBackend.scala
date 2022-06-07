@@ -426,7 +426,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       val executorData = executorDataMap(task.executorId)
       executorData.assignedTask = true
 
-      logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
+      logDebug(s"Launching task ${task.taskId} with partition ${task.partitionId} " +
+        s"on executor id: ${task.executorId} hostname: " +
         s"${executorData.executorHost}.")
 
       time(executorData.executorEndpoint.send(

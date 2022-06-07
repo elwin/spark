@@ -59,6 +59,7 @@ private[spark] abstract class Task[T](
                                        val stageId: Int,
                                        val stageAttemptId: Int,
                                        var partitionId: Int, // will be set by executor
+                                       var partition: Partition, // will be set by executor
                                        @transient var localProperties: Properties = new Properties,
                                        // The default value is only used in tests.
                                        serializedTaskMetrics: Array[Byte] =

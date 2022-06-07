@@ -61,7 +61,7 @@ private[spark] class ShuffleMapTask(
                                      appId: Option[String] = None,
                                      appAttemptId: Option[String] = None,
                                      isBarrier: Boolean = false)
-  extends Task[MapStatus](stageId, stageAttemptId, partition.index, localProperties,
+  extends Task[MapStatus](stageId, stageAttemptId, partition.index, partition, localProperties,
     serializedTaskMetrics, jobId, appId, appAttemptId, isBarrier)
     with Logging {
 

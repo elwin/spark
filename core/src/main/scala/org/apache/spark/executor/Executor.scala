@@ -467,10 +467,16 @@ private[spark] class Executor(
         updateDependencies(
           taskDescription.addedFiles, taskDescription.addedJars, taskDescription.addedArchives)
         task = ser.deserialize[Task[Any]](
-          taskDescription.serializedTask, Thread.currentThread.getContextClassLoader)
+          taskDescription.serializedTask, Thread.currentThread.getContextClassLoader,
+        )
+        var partitions = ser.deserialize[Array[Partition]]( // TODO move to single partition
+          taskDescription.serializedPartition, Thread.currentThread().getContextClassLoader,
+        )
+        task.partition = partitions(taskDescription.partitionId)
         task.localProperties = taskDescription.properties
         task.setTaskMemoryManager(taskMemoryManager)
         task.partitionId = taskDescription.partitionId
+        logInfo(s"xxx: ${task.partition.index}")
 
         logInfo(
           s"""elw3: {"type": "task_size", "task_id": $taskId, "size": ${taskDescription.serializedTask.position()}, "timestamp": ${System.nanoTime}}"""
