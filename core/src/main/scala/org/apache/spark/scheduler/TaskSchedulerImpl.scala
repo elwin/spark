@@ -273,6 +273,7 @@ private[spark] class TaskSchedulerImpl(
       }
       hasReceivedTask = true
     }
+
     backend.reviveOffers()
   }
 

@@ -54,7 +54,9 @@ private[spark] class TaskQueue(
                                 val addedArchives: Map[String, Long],
                                 val properties: Properties,
                                 val resources: immutable.Map[String, ResourceInformation],
-                                val serializedTask: ByteBuffer) {
+                                val serializedTask: ByteBuffer,
+                                val serializedPartitions: ByteBuffer,
+                              ) {
 
   override def toString: String = s"TaskQueue($name)"
 }
@@ -109,7 +111,14 @@ private[spark] object TaskQueue {
     serializeResources(taskQueue.resources, dataOut)
 
     // Write the task. The task is already serialized, so write it directly to the byte buffer.
+    Console.err.println(s"task: ${taskQueue.serializedTask.remaining()}")
+    Console.err.println(s"partitons: ${taskQueue.serializedPartitions.remaining()}")
+
+    dataOut.writeInt(taskQueue.serializedTask.remaining())
+    dataOut.flush()
     Utils.writeByteBuffer(taskQueue.serializedTask, bytesOut)
+
+    Utils.writeByteBuffer(taskQueue.serializedPartitions, bytesOut)
 
     dataOut.close()
     bytesOut.close()
@@ -177,8 +186,18 @@ private[spark] object TaskQueue {
     val resources = deserializeResources(dataIn)
 
     // Create a sub-buffer for the serialized task into its own buffer (to be deserialized later).
-    val serializedTask = byteBuffer.slice()
+    val serializedTaskSize = dataIn.readInt()
 
-    new TaskQueue(executorId, name, taskFiles, taskJars, taskArchives, properties, resources, serializedTask)
+    val serializedTask = byteBuffer.slice()
+    var serializedPartition = serializedTask.duplicate()
+
+    serializedTask.limit(serializedTaskSize)
+    serializedPartition.position(serializedTaskSize)
+    serializedPartition = serializedPartition.slice()
+
+    Console.err.println(s"task: ${serializedTask.remaining()}")
+    Console.err.println(s"partitons: ${serializedPartition.remaining()}")
+
+    new TaskQueue(executorId, name, taskFiles, taskJars, taskArchives, properties, resources, serializedTask, serializedPartition)
   }
 }

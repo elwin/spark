@@ -28,7 +28,6 @@ import org.apache.spark.metrics.source.JVMCPUSource
 import org.apache.spark.resource.ResourceInformation
 import org.apache.spark.rpc.RpcTimeout
 import org.apache.spark.scheduler._
-import org.apache.spark.scheduler.ResultTask
 import org.apache.spark.shuffle.{FetchFailedException, ShuffleBlockPusher}
 import org.apache.spark.storage.{StorageLevel, TaskResultBlockId}
 import org.apache.spark.util._
@@ -468,7 +467,12 @@ private[spark] class Executor(
         updateDependencies(
           taskDescription.addedFiles, taskDescription.addedJars, taskDescription.addedArchives)
         task = ser.deserialize[Task[Any]](
-          taskDescription.serializedTask, Thread.currentThread.getContextClassLoader)
+          taskDescription.serializedTask, Thread.currentThread.getContextClassLoader,
+        )
+        var partitions = ser.deserialize[Array[Partition]]( // TODO move to single partition
+          taskDescription.serializedPartition, Thread.currentThread().getContextClassLoader,
+        )
+        task.partition = partitions(taskDescription.partitionId)
         task.localProperties = taskDescription.properties
         task.setTaskMemoryManager(taskMemoryManager)
         task.partitionId = taskDescription.partitionId

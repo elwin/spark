@@ -64,7 +64,7 @@ class ResultTask[T, U](
                                        appId: Option[String] = None,
                                        appAttemptId: Option[String] = None,
                                        isBarrier: Boolean = false)
-  extends Task[U](stageId, stageAttemptId, partition.index, localProperties, serializedTaskMetrics,
+  extends Task[U](stageId, stageAttemptId, partition.index, partition, localProperties, serializedTaskMetrics,
     jobId, appId, appAttemptId, isBarrier)
     with Serializable {
 
@@ -82,6 +82,7 @@ class ResultTask[T, U](
     val ser = SparkEnv.get.closureSerializer.newInstance()
     val (rdd, func) = ser.deserialize[(RDD[T], (TaskContext, Iterator[T]) => U)](
       ByteBuffer.wrap(taskBinary.value), Thread.currentThread.getContextClassLoader)
+
     _executorDeserializeTimeNs = System.nanoTime() - deserializeStartTimeNs
     _executorDeserializeCpuTime = if (threadMXBean.isCurrentThreadCpuTimeSupported) {
       threadMXBean.getCurrentThreadCpuTime - deserializeStartCpuTime
