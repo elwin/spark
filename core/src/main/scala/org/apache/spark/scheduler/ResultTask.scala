@@ -55,7 +55,7 @@ class ResultTask[T, U](
                                        stageId: Int,
                                        stageAttemptId: Int,
                                        taskBinary: Broadcast[Array[Byte]],
-                                       partition: Partition,
+                                       _partition: Partition,
                                        locs: Seq[TaskLocation],
                                        val outputId: Int,
                                        localProperties: Properties,
@@ -64,7 +64,7 @@ class ResultTask[T, U](
                                        appId: Option[String] = None,
                                        appAttemptId: Option[String] = None,
                                        isBarrier: Boolean = false)
-  extends Task[U](stageId, stageAttemptId, partition.index, partition, localProperties, serializedTaskMetrics,
+  extends Task[U](stageId, stageAttemptId, _partition.index, _partition, localProperties, serializedTaskMetrics,
     jobId, appId, appAttemptId, isBarrier)
     with Serializable {
 
