@@ -469,10 +469,8 @@ private[spark] class Executor(
         task = ser.deserialize[Task[Any]](
           taskDescription.serializedTask, Thread.currentThread.getContextClassLoader,
         )
-        var partitions = ser.deserialize[Array[Partition]]( // TODO move to single partition
-          taskDescription.serializedPartition, Thread.currentThread().getContextClassLoader,
-        )
-        task.partition = partitions(taskDescription.partitionId)
+        
+        task.partition = taskDescription.partition
         task.localProperties = taskDescription.properties
         task.setTaskMemoryManager(taskMemoryManager)
         task.partitionId = taskDescription.partitionId

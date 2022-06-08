@@ -560,7 +560,7 @@ private[spark] class TaskSetManager(
       properties = null,
       resources = null,
       serializedTask = null,
-      serializedPartition = null,
+      partition = null,
     )
   }
 

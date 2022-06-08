@@ -23,6 +23,7 @@ import java.util.Properties
 
 import scala.collection.immutable
 import scala.collection.mutable.{ArrayBuffer, HashMap, Map}
+import org.apache.spark.Partition
 
 import org.apache.spark.resource.ResourceInformation
 
@@ -56,7 +57,7 @@ private[spark] class TaskDescription(
                                       val properties: Properties,
                                       val resources: immutable.Map[String, ResourceInformation],
                                       val serializedTask: ByteBuffer,
-                                      val serializedPartition: ByteBuffer,
+                                      val partition: Partition,
                                     ) {
 
   override def toString: String = s"TaskDescription($name)"
