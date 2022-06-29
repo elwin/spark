@@ -144,6 +144,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     private val logUrlHandler: ExecutorLogUrlHandler = new ExecutorLogUrlHandler(
       conf.get(UI.CUSTOM_EXECUTOR_LOG_URL))
 
+    private var lastCall: Option[Long] = None
+
     override def onStart(): Unit = {
       // Periodically revive offers to allow delay scheduling to work
       val reviveIntervalMs = conf.get(SCHEDULER_REVIVE_INTERVAL).getOrElse(1000L)
@@ -170,6 +172,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   r.release(v.addresses)
                 }
               }
+
+              val cur = System.nanoTime()
+              if (lastCall.isDefined) {
+                logInfo(s"""elw3: {"type": "measurement", "name": "delta", "duration": ${cur - lastCall.get}, "timestamp": $cur}""")
+              }
+              lastCall = Some(cur)
+
               time(makeOffers(executorId), "makeOffers")
             case None =>
               // Ignoring the update since we don't know about the executor.
