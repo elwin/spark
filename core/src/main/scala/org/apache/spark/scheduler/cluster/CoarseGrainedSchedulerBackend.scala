@@ -118,10 +118,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
   def time[R](block: => R, name: String): R = {
-//    val t0 = System.nanoTime()
+    val t0 = System.nanoTime()
     val result = block
-//    val t1 = System.nanoTime()
-//    logInfo(s"""elw3: {"type": "measurement", "name": "${name}", "duration": ${t1 - t0}, "timestamp": $t0}""")
+    val t1 = System.nanoTime()
+    logInfo(s"""elw3: {"type": "measurement", "name": "${name}", "duration": ${t1 - t0}, "timestamp": $t0}""")
 
     result
   }
@@ -156,7 +156,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
-//        logInfo(s"""elw3: {"type": "status_update", "state": "$state", "task": $taskId, "executor_id": "$executorId", "timestamp": ${System.nanoTime()}}""")
+        logInfo(s"""elw3: {"type": "status_update", "state": "$state", "task": $taskId, "executor_id": "$executorId", "timestamp": ${System.nanoTime()}}""")
         if (!executorDataMap.contains(executorId)) {
           // Ignoring the update since we don't know about the executor.
           logWarning(s"Ignored task status update ($taskId state $state) " +
