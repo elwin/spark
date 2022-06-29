@@ -216,6 +216,8 @@ private[spark] class TaskSchedulerImpl(
 
   def newTaskId(): Long = nextTaskId.getAndIncrement()
 
+  def activeExecutors(): Int = executorIdToRunningTaskIds.size
+
   override def start(): Unit = {
     backend.start()
 
