@@ -65,6 +65,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     conf.get(SCHEDULER_MAX_REGISTERED_RESOURCE_WAITING_TIME))
   private val createTimeNs = System.nanoTime()
 
+  private var dispatchedTasks: Int = 0
+
   // Accessing `executorDataMap` in the inherited methods from ThreadSafeRpcEndpoint doesn't need
   // any protection. But accessing `executorDataMap` out of the inherited methods must be
   // protected by `CoarseGrainedSchedulerBackend.this`. Besides, `executorDataMap` should only
@@ -119,10 +121,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
   private var lastCall: Option[Long] = None
 
   def time[R](block: => R, name: String, executorID: String = "0"): R = {
-    val t0 = System.nanoTime()
+    //    val t0 = System.nanoTime()
     val result = block
-    val t1 = System.nanoTime()
-    logInfo(s"""elw3: {"type": "measurement", "name": "${name}", "duration": ${t1 - t0}, "executor_id": "${executorID}", "timestamp": $t0}""")
+    //    val t1 = System.nanoTime()
+    //    logInfo(s"""elw3: {"type": "measurement", "name": "${name}", "duration": ${t1 - t0}, "executor_id": "${executorID}", "timestamp": $t0}""")
 
     result
   }
@@ -147,6 +149,11 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       val reviveIntervalMs = conf.get(SCHEDULER_REVIVE_INTERVAL).getOrElse(1000L)
 
       reviveThread.scheduleAtFixedRate(() => Utils.tryLogNonFatalError {
+        synchronized {
+          logInfo(s"""elw4: {"dispatched_tasks": $dispatchedTasks, "active_executors": ${scheduler.activeExecutors()}, "timestamp": ${System.nanoTime()}}""")
+          dispatchedTasks = 0
+        }
+
         Option(self).foreach(_.send(ReviveOffers))
       }, 0, reviveIntervalMs, TimeUnit.MILLISECONDS)
     }
@@ -155,7 +162,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
-        logInfo(s"""elw3: {"type": "status_update", "state": "$state", "task": $taskId, "queue": "$taskQueue", "executor_id": "$executorId", "timestamp": ${System.nanoTime()}}""")
+        //        logInfo(s"""elw3: {"type": "status_update", "state": "$state", "task": $taskId, "queue": "$taskQueue", "executor_id": "$executorId", "timestamp": ${System.nanoTime()}}""")
         if (!executorDataMap.contains(executorId)) {
           // Ignoring the update since we don't know about the executor.
           logWarning(s"Ignored task status update ($taskId state $state) " +
@@ -163,17 +170,23 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         } else {
           val executorInfo = executorDataMap(executorId)
 
+          if (state.equals(TaskState.RUNNING)) {
+            synchronized {
+              dispatchedTasks += 1
+            }
+          }
+
           if (TaskState.isFinished(state)) {
 
             time({
               executorInfo.assignedTask = false
               if (executorInfo.assignedQueue.isDefined && !executorInfo.assignedTask) {
 
-                val cur = System.nanoTime()
-                if (lastCall.isDefined) {
-                  logInfo(s"""elw3: {"type": "measurement", "name": "delta", "duration": ${cur - lastCall.get}, "timestamp": $cur}""")
-                }
-                lastCall = Some(cur)
+                //                val cur = System.nanoTime()
+                //                if (lastCall.isDefined) {
+                //                  logInfo(s"""elw3: {"type": "measurement", "name": "delta", "duration": ${cur - lastCall.get}, "timestamp": $cur}""")
+                //                }
+                //                lastCall = Some(cur)
 
                 time(makeOffers(executorId, executorInfo.assignedQueue.get), "makeOffers")
               }
@@ -369,6 +382,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       val taskDesc = time(withLock {
         // Filter out executors under killing
         if (!isExecutorActive(executorId)) return;
+
 
         time(scheduler.nextOffer(executorId, executorData.executorHost, taskQueue), "nextOffer", executorId)
       }, "locked")
