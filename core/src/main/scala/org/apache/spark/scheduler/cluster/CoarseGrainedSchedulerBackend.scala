@@ -116,6 +116,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       ThreadUtils.newDaemonSingleThreadScheduledExecutor("cleanup-decommission-execs")
     }
 
+  private var lastCall: Option[Long] = None
+
   def time[R](block: => R, name: String): R = {
     val t0 = System.nanoTime()
     val result = block
@@ -166,12 +168,19 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             time({
               executorInfo.assignedTask = false
               if (executorInfo.assignedQueue.isDefined && !executorInfo.assignedTask) {
+
+                val cur = System.nanoTime()
+                if (lastCall.isDefined) {
+                  logInfo(s"""elw3: {"type": "measurement", "name": "delta", "duration": ${cur - lastCall.get}, "timestamp": $cur}""")
+                }
+                lastCall = Some(cur)
+
                 time(makeOffers(executorId, executorInfo.assignedQueue.get), "makeOffers")
               }
             }, "statusUpdate")
           }
         }
-        // todo: release resources
+      // todo: release resources
 
       case ReviveOffers =>
         for ((executorId, executor) <- executorDataMap) {
