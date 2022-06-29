@@ -1,6 +1,6 @@
 set -e
 
-./build/mvn -Dmaven.test.skip -pl :spark-core_2.12 package
+./build/mvn -DskipTests -Dmaven.test.skip -pl :spark-core_2.12 package
 
 mkdir -p elwin/dist
 cp core/target/spark-core_2.12-3.2.1.jar elwin/dist/spark-core_2.12-3.2.1.jar
