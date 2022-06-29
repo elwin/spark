@@ -21,7 +21,6 @@ import java.net.URL
 import java.nio.ByteBuffer
 import java.util.Locale
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.Date
 import scala.collection.mutable
 import scala.util.{Failure, Success}
 import scala.util.control.NonFatal
@@ -80,9 +79,9 @@ private[spark] class CoarseGrainedExecutorBackend(
   private var decommissioned = false
 
   override def onStart(): Unit = {
-    logInfo(
-      s"""elw3: {"type": "synchronization", "epoch": ${new Date().getTime}, "timestamp": ${System.nanoTime}}"""
-    )
+//    logInfo(
+//      s"""elw3: {"type": "synchronization", "epoch": ${new Date().getTime}, "timestamp": ${System.nanoTime}}"""
+//    )
 
     if (env.conf.get(DECOMMISSION_ENABLED)) {
       val signal = env.conf.get(EXECUTOR_DECOMMISSION_SIGNAL)
@@ -258,9 +257,9 @@ private[spark] class CoarseGrainedExecutorBackend(
   }
 
   override def statusUpdate(taskId: Long, state: TaskState, data: ByteBuffer): Unit = {
-    logInfo(
-      s"""elw3: {"type": "status_update", "task_id": $taskId, "state": "$state", "timestamp": ${System.nanoTime()}}"""
-    )
+//    logInfo(
+//      s"""elw3: {"type": "status_update", "task_id": $taskId, "state": "$state", "timestamp": ${System.nanoTime()}}"""
+//    )
     val resources = taskResources.getOrElse(taskId, Map.empty[String, ResourceInformation])
     val msg = StatusUpdate(executorId, taskId, state, data, resources)
     if (TaskState.isFinished(state)) {
