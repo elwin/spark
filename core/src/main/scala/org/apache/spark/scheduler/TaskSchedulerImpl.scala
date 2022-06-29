@@ -502,10 +502,6 @@ private[spark] class TaskSchedulerImpl(
   def resourceOffers(
                       offers: IndexedSeq[WorkerOffer],
                       isAllFreeResources: Boolean = true): Seq[Seq[TaskDescription]] = synchronized {
-    if (offers.length > 1) {
-      logInfo(s"xxx: ${offers.length}")
-    }
-
     // Mark each worker as alive and remember its hostname
     // Also track if new executor is added
     var newExecAvail = false

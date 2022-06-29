@@ -478,7 +478,10 @@ private[spark] class TaskSetManager(
             }
           }
       val hasPendingTasks = pendingTasks.all.nonEmpty || pendingSpeculatableTasks.all.nonEmpty
-      val hasScheduleDelayReject = taskDescription.isEmpty && maxLocality == TaskLocality.ANY && hasPendingTasks
+      val hasScheduleDelayReject =
+        taskDescription.isEmpty &&
+          maxLocality == TaskLocality.ANY &&
+          hasPendingTasks
       (taskDescription, hasScheduleDelayReject, dequeuedTaskIndex.getOrElse(-1))
     } else {
       (None, false, -1)
