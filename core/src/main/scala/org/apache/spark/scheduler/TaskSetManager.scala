@@ -488,6 +488,15 @@ private[spark] class TaskSetManager(
     }
   }
 
+  def time[R](block: => R, name: String, executorID: String = "0"): R = {
+    val t0 = System.nanoTime()
+    val result = block
+    val t1 = System.nanoTime()
+    logInfo(s"""elw3: {"type": "measurement", "name": "${name}", "duration": ${t1 - t0}, "executor_id": "${executorID}", "timestamp": $t0}""")
+
+    result
+  }
+
   def prepareLaunchingTask(
                             execId: String,
                             host: String,
@@ -508,7 +517,7 @@ private[spark] class TaskSetManager(
     taskAttempts(index) = info :: taskAttempts(index)
     // Serialize and return the task
     val serializedTask: ByteBuffer = try {
-      ser.serialize(task)
+      time(ser.serialize(task), "realEncode")
     } catch {
       // If the task cannot be serialized, then there's no point to re-attempt the task,
       // as it will always fail. So just abort the whole task-set.
