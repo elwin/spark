@@ -173,6 +173,12 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         } else {
           val executorInfo = executorDataMap(executorId)
 
+          if (state.equals(TaskState.RUNNING)) {
+            synchronized {
+              dispatchedTasks += 1
+            }
+          }
+
           if (TaskState.isFinished(state)) {
 
             time({
