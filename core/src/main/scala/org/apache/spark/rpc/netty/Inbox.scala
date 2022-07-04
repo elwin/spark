@@ -74,6 +74,10 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
   @GuardedBy("this")
   private var numActiveThreads = 0
 
+  var durations: Long = 0;
+  var count: Int = 0;
+  var lastPrint: Long = 0
+
   // OnStart should be the first message to process
   inbox.synchronized {
     messages.add(OnStart)
@@ -96,14 +100,9 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
       }
     }
 
-    var durations: Long = 0;
-    var count: Int = 0;
-
-    var end = System.nanoTime()
-
-    var lastPrint = System.nanoTime()
 
     while (true) {
+
       val start = System.nanoTime()
 
       safelyCall(endpoint) {
@@ -159,7 +158,7 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
         }
       }
 
-      end = System.nanoTime()
+      val end = System.nanoTime()
 
       durations += end - start
       count += 1
@@ -168,6 +167,8 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
         lastPrint = end
         val average = if (count > 0) durations / count else 0
         logInfo(s"""elw4: {"type": "profiling", "name": "inboxLoop", "average": $average, "count": $count, "timestamp": $end}""")
+        durations = 0
+        count = 0
       }
 
       inbox.synchronized {
