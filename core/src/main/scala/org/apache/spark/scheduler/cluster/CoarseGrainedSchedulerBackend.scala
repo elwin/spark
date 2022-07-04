@@ -190,7 +190,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     override def receive: PartialFunction[Any, Unit] = {
       case StatusUpdate(executorId, taskId, state, data, resources) =>
         time({
-          time(scheduler.statusUpdate(taskId, state, data.value), "statusUpdate")
+          time(scheduler.statusUpdate(taskId, state, data.value), "statusUpdate_" + state.toString)
 
           if (state.equals(TaskState.RUNNING)) {
             synchronized {
@@ -216,9 +216,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                 // Ignoring the update since we don't know about the executor.
                 logWarning(s"Ignored task status update ($taskId state $state) " +
                   s"from unknown executor with ID $executorId")
-            }, "statusUpdate")
+            }, "taskIsFinished")
           }
-        }, "rpcStatusUpdate")
+        }, "rpcStatusUpdate_" + state.toString)
 
       case ReviveOffers =>
         time({
