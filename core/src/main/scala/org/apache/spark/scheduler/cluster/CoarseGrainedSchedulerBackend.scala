@@ -187,7 +187,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
         time({
-          scheduler.statusUpdate(taskId, state, data.value)
+          time(scheduler.statusUpdate(taskId, state, data.value), "statusUpdate_" + state.toString)
           if (!executorDataMap.contains(executorId)) {
             // Ignoring the update since we don't know about the executor.
             logWarning(s"Ignored task status update ($taskId state $state) " +
@@ -202,16 +202,15 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             }
 
             if (TaskState.isFinished(state)) {
-
               time({
                 executorInfo.assignedTask = false
                 if (executorInfo.assignedQueue.isDefined && !executorInfo.assignedTask) {
                   time(makeOffers(executorId, executorInfo.assignedQueue.get), "makeOffers")
                 }
-              }, "statusUpdate")
+              }, "taskIsFinished")
             }
           }
-        }, "rpcStatusUpdate")
+        }, "rpcStatusUpdate_" + state.toString)
 
       // todo: release resources
 
