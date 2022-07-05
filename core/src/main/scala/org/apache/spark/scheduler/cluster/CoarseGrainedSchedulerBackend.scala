@@ -130,7 +130,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     val result = block
     val t1 = System.nanoTime()
 
-    synchronized {
+    durations.synchronized {
       val cur = durations(name)
       durations(name) = (cur._1 + 1, cur._2 + t1 - t0)
     }
@@ -166,7 +166,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         val bucketSize = curTime - lastPrint
         lastPrint = curTime
 
-        synchronized {
+        durations.synchronized {
           activeExecutors = scheduler.activeExecutors()
           prevDispatchedTasks = dispatchedTasks
           dispatchedTasks = 0

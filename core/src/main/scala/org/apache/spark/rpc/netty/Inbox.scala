@@ -84,7 +84,7 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
     val result = block
     val t1 = System.nanoTime()
 
-    synchronized {
+    durations.synchronized {
       val cur = durations(name)
       durations(name) = (cur._1 + 1, cur._2 + t1 - t0)
     }
@@ -104,11 +104,12 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
     val bucketSize = curTime - lastPrint
     lastPrint = curTime
 
-    for ((name, (count, duration)) <- durations) {
-      durationsList += ((name, count, duration))
-      durations.remove(name)
+    durations.synchronized {
+      for ((name, (count, duration)) <- durations) {
+        durationsList += ((name, count, duration))
+        durations.remove(name)
+      }
     }
-
 
     for ((name, count, duration) <- durationsList) {
       val bucketFraction = duration.toDouble / bucketSize.toDouble
