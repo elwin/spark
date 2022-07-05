@@ -167,7 +167,7 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
         val bucketSize = end - lastPrint
         lastPrint = end
         val threadId = Thread.currentThread().getId
-        val bucketFraction = durations / bucketSize
+        val bucketFraction = durations.toDouble / bucketSize.toDouble
         val average = if (count > 0) durations / count else 0
         logInfo(s"""elw4: {"type": "profiling", "name": "inboxLoop", "total": $durations, "count": $count, "average": $average, "fraction": $bucketFraction, "threadId": $threadId, "endpoint": "$endpointName", "bucket_size": $bucketSize, "timestamp": $end}""")
 
