@@ -112,7 +112,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
   private var dispatchedTasks: Int = 0
 
-  private val durations = new mutable.HashMap[String, (Int, Long)]().withDefaultValue((0, 0))
+  private val durations = new mutable.HashMap[String, (Int, Long)]() // Count, Total Duration
+    .withDefaultValue((0, 0))
+
+  private var lastPrint: Long = 0
 
   private val reviveThread =
     ThreadUtils.newDaemonSingleThreadScheduledExecutor("driver-revive-thread")
@@ -159,6 +162,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         var prevDispatchedTasks = 0
         val durationsList = mutable.ArrayBuffer[(String, Int, Long)]()
 
+        val curTime = System.nanoTime()
+        val bucketSize = curTime - lastPrint
+        lastPrint = curTime
+
         synchronized {
           activeExecutors = scheduler.activeExecutors()
           prevDispatchedTasks = dispatchedTasks
@@ -170,14 +177,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           }
         }
 
-        val curTime = System.nanoTime()
-
         for ((name, count, duration) <- durationsList) {
+          val bucketFraction = duration / bucketSize
           val average = if (count > 0) duration / count else 0
-          logInfo(s"""elw4: {"type": "profiling", "name": "$name", "average": $average, "count": $count, "timestamp": $curTime}""")
+          logInfo(s"""elw4: {"type": "profiling", "name": "$name", "total": $duration, "count": $count, "average": $average, "fraction": $bucketFraction, "bucket_size": $bucketSize, "timestamp": $curTime}""")
         }
 
-        logInfo(s"""elw4: {"type": "throughput", "dispatched_tasks": $prevDispatchedTasks, "active_executors": $activeExecutors, "timestamp": $curTime}""")
+        logInfo(s"""elw4: {"type": "throughput", "dispatched_tasks": $prevDispatchedTasks, "active_executors": $activeExecutors, "bucket_size": $bucketSize, "timestamp": $curTime}""")
 
         Option(self).foreach(_.send(ReviveOffers))
       }, 0, reviveIntervalMs, TimeUnit.MILLISECONDS)
