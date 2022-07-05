@@ -178,7 +178,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         }
 
         for ((name, count, duration) <- durationsList) {
-          val bucketFraction = duration / bucketSize
+          val bucketFraction = duration.toDouble / bucketSize.toDouble
           val average = if (count > 0) duration / count else 0
           logInfo(s"""elw4: {"type": "profiling", "name": "$name", "total": $duration, "count": $count, "average": $average, "fraction": $bucketFraction, "bucket_size": $bucketSize, "timestamp": $curTime}""")
         }
