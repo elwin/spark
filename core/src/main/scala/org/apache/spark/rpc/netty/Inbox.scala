@@ -18,24 +18,24 @@
 package org.apache.spark.rpc.netty
 
 import javax.annotation.concurrent.GuardedBy
-
 import scala.util.control.NonFatal
-
 import org.apache.spark.SparkException
 import org.apache.spark.internal.Logging
 import org.apache.spark.rpc.{RpcAddress, RpcEndpoint, ThreadSafeRpcEndpoint}
+
+import scala.collection.mutable
 
 
 private[netty] sealed trait InboxMessage
 
 private[netty] case class OneWayMessage(
-    senderAddress: RpcAddress,
-    content: Any) extends InboxMessage
+                                         senderAddress: RpcAddress,
+                                         content: Any) extends InboxMessage
 
 private[netty] case class RpcMessage(
-    senderAddress: RpcAddress,
-    content: Any,
-    context: NettyRpcCallContext) extends InboxMessage
+                                      senderAddress: RpcAddress,
+                                      content: Any,
+                                      context: NettyRpcCallContext) extends InboxMessage
 
 private[netty] case object OnStart extends InboxMessage
 
@@ -57,7 +57,7 @@ private[netty] case class RemoteProcessConnectionError(cause: Throwable, remoteA
 private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
   extends Logging {
 
-  inbox =>  // Give this an alias so we can use it more clearly in closures.
+  inbox => // Give this an alias so we can use it more clearly in closures.
 
   @GuardedBy("this")
   protected val messages = new java.util.LinkedList[InboxMessage]()
@@ -74,13 +74,54 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
   @GuardedBy("this")
   private var numActiveThreads = 0
 
-  var durations: Long = 0;
-  var count: Int = 0;
   var lastPrint: Long = 0
+
+  private val durations = new mutable.HashMap[String, (Int, Long)]() // Count, Total Duration
+    .withDefaultValue((0, 0))
+
+  def time[R](block: => R, name: String): R = {
+    val t0 = System.nanoTime()
+    val result = block
+    val t1 = System.nanoTime()
+
+    synchronized {
+      val cur = durations(name)
+      durations(name) = (cur._1 + 1, cur._2 + t1 - t0)
+    }
+
+    result
+  }
 
   // OnStart should be the first message to process
   inbox.synchronized {
     messages.add(OnStart)
+  }
+
+  def printProfilingInformation(): Unit = {
+    val durationsList = mutable.ArrayBuffer[(String, Int, Long)]()
+
+    val curTime = System.nanoTime()
+    val bucketSize = curTime - lastPrint
+    lastPrint = curTime
+
+    for ((name, (count, duration)) <- durations) {
+      durationsList += ((name, count, duration))
+      durations.remove(name)
+    }
+
+
+    for ((name, count, duration) <- durationsList) {
+      val bucketFraction = duration.toDouble / bucketSize.toDouble
+      val average = if (count > 0) duration / count else 0
+      val threadID = Thread.currentThread().getId
+      logInfo(s"""elw4: {"type": "profiling", "name": "$name", "total": $duration, "count": $count, "average": $average, "fraction": $bucketFraction, "bucket_size": $bucketSize, "endpoint_name": "$endpointName", "thread_id": $threadID, "timestamp": $curTime}""")
+    }
+
+  }
+
+  def split(x: String): String = {
+    val i = x.indexOf("(")
+    if (i == -1) x else x.substring(0, i)
   }
 
   /**
@@ -103,76 +144,68 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
 
     while (true) {
 
-      val start = System.nanoTime()
+      time({
+        safelyCall(endpoint) {
+          message match {
+            case RpcMessage(_sender, content, context) =>
+              time({
+                try {
+                  endpoint.receiveAndReply(context).applyOrElse[Any, Unit](content, { msg =>
+                    throw new SparkException(s"Unsupported message $message from ${_sender}")
+                  })
+                } catch {
+                  case e: Throwable =>
+                    context.sendFailure(e)
+                    // Throw the exception -- this exception will be caught by the safelyCall function.
+                    // The endpoint's onError function will be called.
+                    throw e
+                }
+              }, s"rpcMessage_${split(content.toString)}")
 
-      safelyCall(endpoint) {
-        message match {
-          case RpcMessage(_sender, content, context) =>
-            try {
-              endpoint.receiveAndReply(context).applyOrElse[Any, Unit](content, { msg =>
-                throw new SparkException(s"Unsupported message $message from ${_sender}")
-              })
-            } catch {
-              case e: Throwable =>
-                context.sendFailure(e)
-                // Throw the exception -- this exception will be caught by the safelyCall function.
-                // The endpoint's onError function will be called.
-                throw e
-            }
+            case OneWayMessage(_sender, content) =>
+              time({
+                logInfo(content.toString)
 
-          case OneWayMessage(_sender, content) =>
-            logInfo(content.toString)
+                endpoint.receive.applyOrElse[Any, Unit](content, { msg =>
+                  throw new SparkException(s"Unsupported message $message from ${_sender}")
+                })
+              }, s"oneWayMessage_${split(content.toString)}")
 
-            endpoint.receive.applyOrElse[Any, Unit](content, { msg =>
-              throw new SparkException(s"Unsupported message $message from ${_sender}")
-            })
-
-          case OnStart =>
-            endpoint.onStart()
-            if (!endpoint.isInstanceOf[ThreadSafeRpcEndpoint]) {
-              inbox.synchronized {
-                if (!stopped) {
-                  enableConcurrent = true
+            case OnStart =>
+              endpoint.onStart()
+              if (!endpoint.isInstanceOf[ThreadSafeRpcEndpoint]) {
+                inbox.synchronized {
+                  if (!stopped) {
+                    enableConcurrent = true
+                  }
                 }
               }
-            }
 
-          case OnStop =>
-            val activeThreads = inbox.synchronized {
-              inbox.numActiveThreads
-            }
-            assert(activeThreads == 1,
-              s"There should be only a single active thread but found $activeThreads threads.")
-            dispatcher.removeRpcEndpointRef(endpoint)
-            endpoint.onStop()
-            assert(isEmpty, "OnStop should be the last message")
+            case OnStop =>
+              val activeThreads = inbox.synchronized {
+                inbox.numActiveThreads
+              }
+              assert(activeThreads == 1,
+                s"There should be only a single active thread but found $activeThreads threads.")
+              dispatcher.removeRpcEndpointRef(endpoint)
+              endpoint.onStop()
+              assert(isEmpty, "OnStop should be the last message")
 
-          case RemoteProcessConnected(remoteAddress) =>
-            endpoint.onConnected(remoteAddress)
+            case RemoteProcessConnected(remoteAddress) =>
+              endpoint.onConnected(remoteAddress)
 
-          case RemoteProcessDisconnected(remoteAddress) =>
-            endpoint.onDisconnected(remoteAddress)
+            case RemoteProcessDisconnected(remoteAddress) =>
+              endpoint.onDisconnected(remoteAddress)
 
-          case RemoteProcessConnectionError(cause, remoteAddress) =>
-            endpoint.onNetworkError(cause, remoteAddress)
+            case RemoteProcessConnectionError(cause, remoteAddress) =>
+              endpoint.onNetworkError(cause, remoteAddress)
+          }
         }
-      }
 
-      val end = System.nanoTime()
+      }, "inboxLoop")
 
-      durations += end - start
-      count += 1
-
-      if (end - lastPrint > 1000000000) {
-        val bucketSize = end - lastPrint
-        lastPrint = end
-        val threadId = Thread.currentThread().getId
-        val bucketFraction = durations.toDouble / bucketSize.toDouble
-        val average = if (count > 0) durations / count else 0
-        logInfo(s"""elw4: {"type": "profiling", "name": "inboxLoop", "total": $durations, "count": $count, "average": $average, "fraction": $bucketFraction, "threadId": $threadId, "endpoint": "$endpointName", "bucket_size": $bucketSize, "timestamp": $end}""")
-
-        durations = 0
-        count = 0
+      if (System.nanoTime() - lastPrint > 1000000000) {
+        printProfilingInformation()
       }
 
       inbox.synchronized {
@@ -216,7 +249,9 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
     }
   }
 
-  def isEmpty: Boolean = inbox.synchronized { messages.isEmpty }
+  def isEmpty: Boolean = inbox.synchronized {
+    messages.isEmpty
+  }
 
   /**
    * Called when we are dropping a message. Test cases override this to test message dropping.
