@@ -18,8 +18,7 @@
 package org.apache.spark.scheduler.cluster
 
 import java.nio.ByteBuffer
-
-import org.apache.spark.TaskState.TaskState
+import org.apache.spark.TaskState.{FINISHED, RUNNING, TaskState}
 import org.apache.spark.resource.{ResourceInformation, ResourceProfile}
 import org.apache.spark.rpc.RpcEndpointRef
 import org.apache.spark.scheduler.{ExecutorLossReason, MiscellaneousProcessDetails}
@@ -84,7 +83,17 @@ private[spark] object CoarseGrainedClusterMessages {
                            taskQueue: Option[String],
                            data: SerializableBuffer,
                            resources: Map[String, ResourceInformation] = Map.empty)
-    extends CoarseGrainedClusterMessage
+    extends CoarseGrainedClusterMessage {
+    override def toString: String = {
+     val str = state match {
+       case RUNNING => "RUNNING"
+       case FINISHED => "FINISHED"
+       case default => default.toString
+     }
+
+      s"StatusUpdate($str)"
+    }
+  }
 
   object StatusUpdate {
     /** Alternate factory method that takes a ByteBuffer directly for the data field */
