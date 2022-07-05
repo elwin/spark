@@ -415,34 +415,40 @@ private[spark] class TaskSetManager(
     }
   }
 
+  var serializedTask: Option[ByteBuffer] = None
+  var serializedPartitions: Option[ByteBuffer] = None
+
   def queueOffer(
                   execID: String,
                   taskResourceAssignments: Map[String, ResourceInformation],
                 ): TaskQueue = {
     val task = tasks(0)
 
-    // Serialize and return the task
-    val serializedTask: ByteBuffer = try {
-      ser.serialize(task)
-    } catch {
-      // If the task cannot be serialized, then there's no point to re-attempt the task,
-      // as it will always fail. So just abort the whole task-set.
-      case NonFatal(e) =>
-        val msg = s"Failed to serialize task ${task.jobId}(0), not attempting to retry it."
-        logError(msg, e)
-        abort(s"$msg Exception during serialization: $e")
-        throw new TaskNotSerializableException(e)
+    if (serializedTask.isEmpty) {
+
+      // Serialize and return the task
+      serializedTask = try {
+        Some(ser.serialize(task))
+      } catch {
+        // If the task cannot be serialized, then there's no point to re-attempt the task,
+        // as it will always fail. So just abort the whole task-set.
+        case NonFatal(e) =>
+          val msg = s"Failed to serialize task ${task.jobId}(0), not attempting to retry it."
+          logError(msg, e)
+          abort(s"$msg Exception during serialization: $e")
+          throw new TaskNotSerializableException(e)
+      }
     }
 
-    val serializedPartitions: ByteBuffer = try {
-      ser.serialize(taskSet.partitions)
-    } catch {
-      case NonFatal(e) =>
-        logError(s"Failed to serialize partition for TaskSet ${taskSet.id}")
-        throw new TaskNotSerializableException(e)
+    if (serializedPartitions.isEmpty) {
+      serializedPartitions = try {
+        Some(ser.serialize(taskSet.partitions))
+      } catch {
+        case NonFatal(e) =>
+          logError(s"Failed to serialize partition for TaskSet ${taskSet.id}")
+          throw new TaskNotSerializableException(e)
+      }
     }
-
-    logInfo(s"partitions: ${serializedPartitions.remaining()}")
 
     new TaskQueue(
       executorId = execID,
@@ -452,8 +458,8 @@ private[spark] class TaskSetManager(
       addedArchives = addedArchives,
       properties = task.localProperties,
       resources = taskResourceAssignments,
-      serializedTask = serializedTask,
-      serializedPartitions = serializedPartitions,
+      serializedTask = serializedTask.get,
+      serializedPartitions = serializedPartitions.get,
     )
   }
 

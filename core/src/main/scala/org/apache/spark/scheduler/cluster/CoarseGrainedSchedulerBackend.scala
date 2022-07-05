@@ -224,7 +224,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         time({
           for ((executorId, executor) <- executorDataMap) {
             if (executor.assignedQueue.isEmpty) {
-              makeQueue(executorId)
+              time(makeQueue(executorId), "reviveMakeQueue")
             }
 
             if (executor.assignedQueue.isDefined && !executor.assignedTask) {
@@ -390,9 +390,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
 
         val taskResourceAssignments = HashMap[String, ResourceInformation]().toMap
-        val taskQueue = taskSet.queueOffer(executorId, taskResourceAssignments)
+        val taskQueue = time(taskSet.queueOffer(executorId, taskResourceAssignments), "queueOffer")
 
-        launchTaskQueue(taskQueue)
+        time(launchTaskQueue(taskQueue), "launchTaskQueue")
 
         return
       }
