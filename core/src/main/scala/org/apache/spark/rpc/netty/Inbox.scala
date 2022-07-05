@@ -164,10 +164,12 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
       count += 1
 
       if (end - lastPrint > 1000000000) {
+        val bucketSize = end - lastPrint
         lastPrint = end
-        val average = if (count > 0) durations / count else 0
         val threadId = Thread.currentThread().getId
-        logInfo(s"""elw4: {"type": "profiling", "name": "inboxLoop", "average": $average, "count": $count, "threadId": $threadId, "endpoint": "$endpointName", "timestamp": $end}""")
+        val bucketFraction = durations / bucketSize
+        val average = if (count > 0) durations / count else 0
+        logInfo(s"""elw4: {"type": "profiling", "name": "inboxLoop", "total": $durations, "count": $count, "average": $average, "fraction": $bucketFraction, "threadId": $threadId, "endpoint": "$endpointName", "bucket_size": $bucketSize, "timestamp": $end}""")
 
         durations = 0
         count = 0
