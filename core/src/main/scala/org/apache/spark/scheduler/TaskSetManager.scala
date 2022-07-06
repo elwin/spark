@@ -416,7 +416,7 @@ private[spark] class TaskSetManager(
   }
 
   var serializedTask: Option[ByteBuffer] = None
-//  var serializedPartitions: Option[Array[ByteBuffer]] = None
+  var serializedPartitions: Option[ByteBuffer] = None
 
   def queueOffer(
                   execID: String,
@@ -440,6 +440,15 @@ private[spark] class TaskSetManager(
       }
     }
 
+    if (serializedPartitions.isEmpty) {
+      serializedPartitions = try {
+        Some(ser.serialize(taskSet.partitions))
+      } catch {
+        case NonFatal(e) =>
+          logError(s"Failed to serialize partition for TaskSet ${taskSet.id}")
+          throw new TaskNotSerializableException(e)
+      }
+    }
 
     new TaskQueue(
       executorId = execID,
@@ -450,6 +459,7 @@ private[spark] class TaskSetManager(
       properties = task.localProperties,
       resources = taskResourceAssignments,
       serializedTask = serializedTask.get,
+      serializedPartitions = serializedPartitions.get,
     )
   }
 
@@ -556,7 +566,7 @@ private[spark] class TaskSetManager(
       properties = null,
       resources = null,
       serializedTask = null,
-      partition = task.partition,
+      partition = null,
     )
   }
 

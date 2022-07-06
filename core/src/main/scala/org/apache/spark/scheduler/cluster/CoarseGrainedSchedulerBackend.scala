@@ -481,7 +481,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         s"${executorData.executorHost}.")
 
       time(executorData.executorEndpoint.send(
-        LaunchTask(task.taskId, task.attemptNumber, task.executorId, task.name, task.index, task.partitionId, task.partition),
+        LaunchTask(task.taskId, task.attemptNumber, task.executorId, task.name, task.index, task.partitionId),
       ), "rpcLaunch")
     }
 
