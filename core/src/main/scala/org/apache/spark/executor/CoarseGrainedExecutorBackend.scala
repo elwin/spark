@@ -70,7 +70,6 @@ private[spark] class CoarseGrainedExecutorBackend(
   private var _resources = Map.empty[String, ResourceInformation]
 
   private var currentTaskQueue: Option[TaskQueue] = None
-  private var partitions: Array[Partition] = null
 
   /**
    * Map each taskId to the information about the resource allocated to it, Please refer to
@@ -173,7 +172,7 @@ private[spark] class CoarseGrainedExecutorBackend(
           exitExecutor(1, "Unable to create executor due to " + e.getMessage, e)
       }
 
-    case LaunchTask(taskId, attemptNumber, executorId, name, index, partitionId) =>
+    case LaunchTask(taskId, attemptNumber, executorId, name, index, partitionId, partition) =>
       if (executor == null) {
         exitExecutor(1, "Received LaunchTask command but executor was null")
       } else if (currentTaskQueue.isEmpty) {
@@ -194,7 +193,7 @@ private[spark] class CoarseGrainedExecutorBackend(
           properties = taskQueue.properties,
           resources = taskQueue.resources,
           serializedTask = taskQueue.serializedTask,
-          partition = partitions(partitionId),
+          partition = partition,
         )
 
         // serializedTask is shared amongst all executors and needs to be reset
@@ -216,12 +215,6 @@ private[spark] class CoarseGrainedExecutorBackend(
         this.currentTaskQueue = Some(taskQueue)
         taskResources(taskQueue.name) = taskQueue.resources
         logInfo(s"received TaskQueue ${taskQueue.name}")
-
-        val ser = env.closureSerializer.newInstance()
-
-        partitions = ser.deserialize[Array[Partition]](
-          taskQueue.serializedPartitions, Thread.currentThread().getContextClassLoader,
-        )
       }
 
     case ClearTaskQueue =>

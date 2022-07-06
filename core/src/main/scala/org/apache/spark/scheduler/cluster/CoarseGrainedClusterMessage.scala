@@ -17,6 +17,8 @@
 
 package org.apache.spark.scheduler.cluster
 
+import org.apache.spark.Partition
+
 import java.nio.ByteBuffer
 import org.apache.spark.TaskState.{FINISHED, RUNNING, TaskState}
 import org.apache.spark.resource.{ResourceInformation, ResourceProfile}
@@ -40,7 +42,15 @@ private[spark] object CoarseGrainedClusterMessages {
   case object RetrieveLastAllocatedExecutorId extends CoarseGrainedClusterMessage
 
   // Driver to executors
-  case class LaunchTask(taskId: Long, attemptNumber: Int, executorId: String, name: String, index: Int, partitionId: Int) extends CoarseGrainedClusterMessage
+  case class LaunchTask(
+                         taskId: Long,
+                         attemptNumber: Int,
+                         executorId: String,
+                         name: String,
+                         index: Int,
+                         partitionId: Int,
+                         partition: Partition,
+                       ) extends CoarseGrainedClusterMessage
 
   case class LaunchTaskQueue(data: SerializableBuffer) extends CoarseGrainedClusterMessage
 
@@ -85,11 +95,11 @@ private[spark] object CoarseGrainedClusterMessages {
                            resources: Map[String, ResourceInformation] = Map.empty)
     extends CoarseGrainedClusterMessage {
     override def toString: String = {
-     val str = state match {
-       case RUNNING => "RUNNING"
-       case FINISHED => "FINISHED"
-       case default => default.toString
-     }
+      val str = state match {
+        case RUNNING => "RUNNING"
+        case FINISHED => "FINISHED"
+        case default => default.toString
+      }
 
       s"StatusUpdate($str)"
     }
