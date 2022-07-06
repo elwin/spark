@@ -82,10 +82,6 @@ private[spark] class CoarseGrainedExecutorBackend(
   private var decommissioned = false
 
   override def onStart(): Unit = {
-//    logInfo(
-//      s"""elw3: {"type": "synchronization", "epoch": ${new Date().getTime}, "timestamp": ${System.nanoTime}}"""
-//    )
-
     if (env.conf.get(DECOMMISSION_ENABLED)) {
       val signal = env.conf.get(EXECUTOR_DECOMMISSION_SIGNAL)
       logInfo(s"Registering SIG$signal handler to trigger decommissioning.")
@@ -310,10 +306,6 @@ private[spark] class CoarseGrainedExecutorBackend(
     if (currentTaskQueue.isDefined) {
       name = Some(currentTaskQueue.get.name)
     }
-
-//    logInfo(
-//      s"""elw3: {"type": "status_update", "task_id": $taskId, "queue": "$name", "state": "$state", "timestamp": ${System.nanoTime()}}"""
-//    )
 
     val resources = taskResources.getOrElse(name.orNull, Map.empty[String, ResourceInformation])
     val queue = if (currentTaskQueue.isDefined) Some(currentTaskQueue.get.name) else None

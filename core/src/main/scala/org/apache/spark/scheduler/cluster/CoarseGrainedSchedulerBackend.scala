@@ -180,10 +180,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         for ((name, count, duration) <- durationsList) {
           val bucketFraction = duration.toDouble / bucketSize.toDouble
           val average = if (count > 0) duration / count else 0
-          logInfo(s"""elw4: {"type": "profiling", "name": "$name", "total": $duration, "count": $count, "average": $average, "fraction": $bucketFraction, "bucket_size": $bucketSize, "timestamp": $curTime}""")
+          logWarning(s"""elw4: {"type": "profiling", "name": "$name", "total": $duration, "count": $count, "average": $average, "fraction": $bucketFraction, "bucket_size": $bucketSize, "timestamp": $curTime}""")
         }
 
-        logInfo(s"""elw4: {"type": "throughput", "dispatched_tasks": $prevDispatchedTasks, "active_executors": $activeExecutors, "bucket_size": $bucketSize, "timestamp": $curTime}""")
+        logWarning(s"""elw4: {"type": "throughput", "dispatched_tasks": $prevDispatchedTasks, "active_executors": $activeExecutors, "bucket_size": $bucketSize, "timestamp": $curTime}""")
 
         Option(self).foreach(_.send(ReviveOffers))
       }, 0, reviveIntervalMs, TimeUnit.MILLISECONDS)
