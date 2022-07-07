@@ -428,7 +428,9 @@ private[spark] class TaskSetManager(
 
       // Serialize and return the task
       serializedTask = try {
-        Some(ser.serialize(task))
+        Some(
+          Time.time(ser.serialize(task), "serializeTask")
+        )
       } catch {
         // If the task cannot be serialized, then there's no point to re-attempt the task,
         // as it will always fail. So just abort the whole task-set.
