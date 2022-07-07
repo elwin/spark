@@ -37,7 +37,7 @@ import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages._
 import org.apache.spark.scheduler.cluster.CoarseGrainedSchedulerBackend.ENDPOINT_NAME
 import org.apache.spark.util.{RpcUtils, SerializableBuffer, ThreadUtils, Utils}
 
-import scala.collection.mutable
+import org.apache.spark.Time
 
 /**
  * A scheduler backend that waits for coarse-grained executors to connect.
@@ -111,33 +111,20 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
   // The token manager used to create security tokens.
   private var delegationTokenManager: Option[HadoopDelegationTokenManager] = None
 
-  private var dispatchedTasks: Int = 0
-
-  private val durations = new mutable.HashMap[String, (Int, Long)]() // Count, Total Duration
-    .withDefaultValue((0, 0))
+  private var dispatchedTasks = new AtomicInteger(0)
 
   private var lastPrint: Long = 0
 
   private val reviveThread =
     ThreadUtils.newDaemonSingleThreadScheduledExecutor("driver-revive-thread")
 
+  private val profileThread = ThreadUtils.newDaemonSingleThreadScheduledExecutor("driver-profile-thread")
+
   private val cleanupService: Option[ScheduledExecutorService] =
     conf.get(EXECUTOR_DECOMMISSION_FORCE_KILL_TIMEOUT).map { _ =>
       ThreadUtils.newDaemonSingleThreadScheduledExecutor("cleanup-decommission-execs")
     }
 
-  def time[R](block: => R, name: String): R = {
-    val t0 = System.nanoTime()
-    val result = block
-    val t1 = System.nanoTime()
-
-    durations.synchronized {
-      val cur = durations(name)
-      durations(name) = (cur._1 + 1, cur._2 + t1 - t0)
-    }
-
-    result
-  }
 
   class DriverEndpoint extends IsolatedRpcEndpoint with Logging {
 
@@ -159,50 +146,40 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       val reviveIntervalMs = conf.get(SCHEDULER_REVIVE_INTERVAL).getOrElse(1000L)
 
       reviveThread.scheduleAtFixedRate(() => Utils.tryLogNonFatalError {
-        var activeExecutors = 0
-        var prevDispatchedTasks = 0
-        val durationsList = mutable.ArrayBuffer[(String, Int, Long)]()
+        Option(self).foreach(_.send(ReviveOffers))
+      }, 0, reviveIntervalMs, TimeUnit.MILLISECONDS)
+
+      profileThread.scheduleAtFixedRate(() => Utils.tryLogNonFatalError {
+        val activeExecutors = scheduler.activeExecutors()
+        val prevDispatchedTasks = dispatchedTasks.get()
 
         val curTime = System.nanoTime()
         val bucketSize = curTime - lastPrint
         lastPrint = curTime
-
-        durations.synchronized {
-          activeExecutors = scheduler.activeExecutors()
-          prevDispatchedTasks = dispatchedTasks
-          dispatchedTasks = 0
-
-          for ((name, (count, duration)) <- durations) {
-            durationsList += ((name, count, duration))
-            durations(name) = (0, 0)
-          }
-        }
-
-        for ((name, count, duration) <- durationsList) {
-          val bucketFraction = duration.toDouble / bucketSize.toDouble
-          val average = if (count > 0) duration / count else 0
-          logWarning(s"""elw4: {"type": "profiling", "name": "$name", "total": $duration, "count": $count, "average": $average, "fraction": $bucketFraction, "bucket_size": $bucketSize, "timestamp": $curTime}""")
-        }
+        dispatchedTasks.set(0)
 
         logWarning(s"""elw4: {"type": "throughput", "dispatched_tasks": $prevDispatchedTasks, "active_executors": $activeExecutors, "bucket_size": $bucketSize, "timestamp": $curTime}""")
 
-        Option(self).foreach(_.send(ReviveOffers))
-      }, 0, reviveIntervalMs, TimeUnit.MILLISECONDS)
+        for (line <- Time.printProfilingInformation()) {
+          logWarning(line)
+        }
+      }, 0, 1, TimeUnit.SECONDS)
+
     }
 
     override def receive: PartialFunction[Any, Unit] = {
       case StatusUpdate(executorId, taskId, state, data, resources) =>
-        time({
-          time(scheduler.statusUpdate(taskId, state, data.value), "statusUpdate_" + state.toString)
+        Time.time({
+          Time.time(scheduler.statusUpdate(taskId, state, data.value), "statusUpdate_" + state.toString)
 
           if (state.equals(TaskState.RUNNING)) {
             synchronized {
-              dispatchedTasks += 1
+              dispatchedTasks.incrementAndGet()
             }
           }
 
           if (TaskState.isFinished(state)) {
-            time(executorDataMap.get(executorId) match {
+            Time.time(executorDataMap.get(executorId) match {
               case Some(executorInfo) =>
                 val rpId = executorInfo.resourceProfileId
                 val prof = scheduler.sc.resourceProfileManager.resourceProfileFromId(rpId)
@@ -214,7 +191,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
                   }
                 }
 
-                time(makeOffers(executorId), "makeOffers")
+                Time.time(makeOffers(executorId), "makeOffers")
               case None =>
                 // Ignoring the update since we don't know about the executor.
                 logWarning(s"Ignored task status update ($taskId state $state) " +
@@ -224,7 +201,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         }, "rpcStatusUpdate_" + state.toString)
 
       case ReviveOffers =>
-        time({
+        Time.time({
           makeOffers()
         }, "rpcReviveOffers")
 
@@ -404,7 +381,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Make fake resource offers on just one executor
     private def makeOffers(executorId: String): Unit = {
       // Make sure no executor is killed while some task is launching on it
-      val taskDescs = time(withLock {
+      val taskDescs = Time.time(withLock {
         // Filter out executors under killing
         if (isExecutorActive(executorId)) {
           val executorData = executorDataMap(executorId)
@@ -414,21 +391,21 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
               executorData.resourcesInfo.map { case (rName, rInfo) =>
                 (rName, rInfo.availableAddrs.toBuffer)
               }, executorData.resourceProfileId))
-          time(scheduler.resourceOffers(workOffers, false), "nextOffer")
+          Time.time(scheduler.resourceOffers(workOffers, false), "nextOffer")
         } else {
           Seq.empty
         }
       }, "locked")
 
       if (taskDescs.nonEmpty) {
-        time(launchTasks(taskDescs), "launchTask")
+        Time.time(launchTasks(taskDescs), "launchTask")
       }
     }
 
     // Launch tasks returned by a set of resource offers
     private def launchTasks(tasks: Seq[Seq[TaskDescription]]): Unit = {
       for (task <- tasks.flatten) {
-        val serializedTask = time(TaskDescription.encode(task), "encode")
+        val serializedTask = Time.time(TaskDescription.encode(task), "encode")
         if (serializedTask.limit() >= maxRpcMessageSize) {
           Option(scheduler.taskIdToTaskSetManager.get(task.taskId)).foreach { taskSetMgr =>
             try {
@@ -458,7 +435,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
             s"${executorData.executorHost}.")
 
-          time(executorData.executorEndpoint.send(
+          Time.time(executorData.executorEndpoint.send(
             LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch"
           )
         }

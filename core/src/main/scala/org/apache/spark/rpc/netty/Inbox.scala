@@ -19,11 +19,9 @@ package org.apache.spark.rpc.netty
 
 import javax.annotation.concurrent.GuardedBy
 import scala.util.control.NonFatal
-import org.apache.spark.SparkException
+import org.apache.spark.{SparkException, Time}
 import org.apache.spark.internal.Logging
 import org.apache.spark.rpc.{RpcAddress, RpcEndpoint, ThreadSafeRpcEndpoint}
-
-import scala.collection.mutable
 
 
 private[netty] sealed trait InboxMessage
@@ -74,49 +72,9 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
   @GuardedBy("this")
   private var numActiveThreads = 0
 
-  var lastPrint: Long = 0
-
-  private val durations = new mutable.HashMap[String, (Int, Long)]() // Count, Total Duration
-    .withDefaultValue((0, 0))
-
-  def time[R](block: => R, name: String): R = {
-    val t0 = System.nanoTime()
-    val result = block
-    val t1 = System.nanoTime()
-
-    synchronized {
-      val cur = durations(name)
-      durations(name) = (cur._1 + 1, cur._2 + t1 - t0)
-    }
-
-    result
-  }
-
   // OnStart should be the first message to process
   inbox.synchronized {
     messages.add(OnStart)
-  }
-
-  def printProfilingInformation(): Unit = {
-    val durationsList = mutable.ArrayBuffer[(String, Int, Long)]()
-
-    val curTime = System.nanoTime()
-    val bucketSize = curTime - lastPrint
-    lastPrint = curTime
-
-    for ((name, (count, duration)) <- durations) {
-      durationsList += ((name, count, duration))
-      durations.remove(name)
-    }
-
-
-    for ((name, count, duration) <- durationsList) {
-      val bucketFraction = duration.toDouble / bucketSize.toDouble
-      val average = if (count > 0) duration / count else 0
-      val threadID = Thread.currentThread().getId
-      logWarning(s"""elw4: {"type": "profiling", "name": "$name", "total": $duration, "count": $count, "average": $average, "fraction": $bucketFraction, "bucket_size": $bucketSize, "endpoint_name": "$endpointName", "thread_id": $threadID, "timestamp": $curTime}""")
-    }
-
   }
 
   def split(x: String): String = {
@@ -144,11 +102,11 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
 
     while (true) {
 
-      time({
+      Time.time({
         safelyCall(endpoint) {
           message match {
             case RpcMessage(_sender, content, context) =>
-              time({
+              Time.time({
                 try {
                   endpoint.receiveAndReply(context).applyOrElse[Any, Unit](content, { msg =>
                     throw new SparkException(s"Unsupported message $message from ${_sender}")
@@ -163,7 +121,7 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
               }, s"rpcMessage_${split(content.toString)}")
 
             case OneWayMessage(_sender, content) =>
-              time({
+              Time.time({
                 endpoint.receive.applyOrElse[Any, Unit](content, { msg =>
                   throw new SparkException(s"Unsupported message $message from ${_sender}")
                 })
@@ -200,11 +158,7 @@ private[netty] class Inbox(val endpointName: String, val endpoint: RpcEndpoint)
           }
         }
 
-      }, "inboxLoop")
-
-      if (System.nanoTime() - lastPrint > 1000000000) {
-        printProfilingInformation()
-      }
+      }, s"inboxLoop_${endpointName}")
 
       inbox.synchronized {
         // "enableConcurrent" will be set to false after `onStop` is called, so we should check it
