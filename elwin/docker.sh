@@ -15,3 +15,7 @@ echo "Pushing to \"${IMAGE_NAME}\""
 
 docker build -f elwin/Dockerfile -t "${IMAGE_NAME}" elwin
 docker push "${IMAGE_NAME}"
+
+echo "Pushing to zac"
+
+scp dist/jars/spark-core_2.12-3.2.1.jar zac25:~/spark-versions/"${TAG}"/jars
