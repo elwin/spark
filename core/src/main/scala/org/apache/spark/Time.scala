@@ -49,9 +49,11 @@ object Time {
   def printProfilingInformation(): mutable.ArrayBuffer[String] = {
     val durationsList = mutable.ArrayBuffer[String]()
 
-
-    for ((key, entry) <- durations.asScala) {
+    for (key <- durations.keySet().asScala) {
       val curTime = System.nanoTime()
+
+      val entry = durations.put(key, Entry(start = curTime, count = 0, duration = 0))
+
       val bucketSize = curTime - entry.start
       val average = if (entry.count > 0) entry.duration / entry.count else 0
       val fraction = entry.duration.toDouble / bucketSize.toDouble

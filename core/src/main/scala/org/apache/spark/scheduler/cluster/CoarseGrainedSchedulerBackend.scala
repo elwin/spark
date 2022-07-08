@@ -151,12 +151,11 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       profileThread.scheduleAtFixedRate(() => Utils.tryLogNonFatalError {
         val activeExecutors = scheduler.activeExecutors()
-        val prevDispatchedTasks = dispatchedTasks.get()
+        val prevDispatchedTasks = dispatchedTasks.getAndSet(0)
 
         val curTime = System.nanoTime()
         val bucketSize = curTime - lastPrint
         lastPrint = curTime
-        dispatchedTasks.set(0)
 
         logWarning(s"""elw4: {"type": "throughput", "dispatched_tasks": $prevDispatchedTasks, "active_executors": $activeExecutors, "bucket_size": $bucketSize, "timestamp": $curTime}""")
 
