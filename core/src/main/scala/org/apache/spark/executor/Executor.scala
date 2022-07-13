@@ -642,6 +642,15 @@ private[spark] class Executor(
         executorSource.SUCCEEDED_TASKS.inc(1L)
         setTaskFinishedAndClearInterruptStatus()
         plugins.foreach(_.onTaskSucceeded())
+
+        val finishTime = System.nanoTime()
+        val taskDuration = taskFinishNs - taskStartTimeNs
+        val initDuration = taskStartTimeNs - initStartTime
+        val outDuration = finishTime - taskFinishNs
+        val totalDuration = finishTime - initStartTime
+        logWarning(s"""elw4: {"type": "profiling_executor", "task_duration": $taskDuration, "init_duration": $initDuration, "out_duration": $outDuration, "total_duration": $totalDuration, "timestamp": $finishTime}""")
+
+
         execBackend.statusUpdate(taskId, TaskState.FINISHED, serializedResult)
       } catch {
         case t: TaskKilledException =>
