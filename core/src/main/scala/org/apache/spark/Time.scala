@@ -24,11 +24,12 @@ import scala.collection.mutable
 import collection.JavaConverters._
 
 object Time {
-  private val durations = new ConcurrentHashMap[Key, Entry]()
-
   case class Key(Name: String, ThreadID: Long)
 
   case class Entry(start: Long, count: Int, duration: Long)
+
+  private val durations = new ConcurrentHashMap[Key, Entry]()
+  private val taskGap = new ConcurrentHashMap[Long, Long]()
 
   def time[R](block: => R, name: String): R = {
     val t0 = System.nanoTime()
@@ -46,6 +47,20 @@ object Time {
     result
   }
 
+  def launchedTask(taskId: Long): Unit = {
+    taskGap.put(taskId, System.nanoTime())
+  }
+
+  def finishedTask(taskId: Long): Unit = {
+    val duration = System.nanoTime() - taskGap.remove(taskId)
+
+    val threadID = Thread.currentThread().getId
+    durations.compute(Key(Name = "gap_duration", ThreadID = threadID), (_, value) =>
+      if (value == null) Entry(start = System.nanoTime(), count = 1, duration = duration)
+      else Entry(start = value.start, count = value.count + 1, duration = value.duration + duration)
+    )
+  }
+
   def printProfilingInformation(): mutable.ArrayBuffer[String] = {
     val durationsList = mutable.ArrayBuffer[String]()
 
@@ -58,7 +73,16 @@ object Time {
       val average = if (entry.count > 0) entry.duration / entry.count else 0
       val fraction = entry.duration.toDouble / bucketSize.toDouble
 
-      durationsList.append(s"""elw4: {"type": "profiling", "name": "${key.Name}", "total": ${entry.duration}, "count": ${entry.count}, "average": $average, "fraction": $fraction, "bucket_size": $bucketSize, "thread_id": ${key.ThreadID}, "timestamp": $curTime}""")
+      durationsList.append(
+        s"""elw4: {"type": "profiling", "name": "${
+          key.Name
+        }", "total": ${
+          entry.duration
+        }, "count": ${
+          entry.count
+        }, "average": $average, "fraction": $fraction, "bucket_size": $bucketSize, "thread_id": ${
+          key.ThreadID
+        }, "timestamp": $curTime}""")
     }
 
     durationsList

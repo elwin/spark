@@ -169,12 +169,14 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     override def receive: PartialFunction[Any, Unit] = {
       case StatusUpdate(executorId, taskId, state, data, resources) =>
         Time.time({
+          if (state.equals(TaskState.FINISHED)) {
+            Time.finishedTask(taskId)
+          }
+
           Time.time(scheduler.statusUpdate(taskId, state, data.value), "statusUpdate_" + state.toString)
 
           if (state.equals(TaskState.RUNNING)) {
-            synchronized {
-              dispatchedTasks.incrementAndGet()
-            }
+            dispatchedTasks.incrementAndGet()
           }
 
           if (TaskState.isFinished(state)) {
@@ -434,9 +436,12 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
             s"${executorData.executorHost}.")
 
+
           Time.time(executorData.executorEndpoint.send(
             LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch"
           )
+
+          Time.launchedTask(task.taskId)
         }
       }
     }
