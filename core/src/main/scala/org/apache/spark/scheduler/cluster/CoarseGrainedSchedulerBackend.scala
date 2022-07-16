@@ -172,6 +172,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
         Time.time({
+          if (state.equals(TaskState.FINISHED)) {
+            Time.finishedTask(taskId)
+          }
+
           Time.time(scheduler.statusUpdate(taskId, state, data.value), "statusUpdate_" + state.toString)
           if (!executorDataMap.contains(executorId)) {
             // Ignoring the update since we don't know about the executor.
@@ -181,9 +185,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             val executorInfo = executorDataMap(executorId)
 
             if (state.equals(TaskState.RUNNING)) {
-              synchronized {
                 dispatchedTasks.incrementAndGet()
-              }
             }
 
             if (TaskState.isFinished(state)) {
@@ -471,6 +473,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         Time.time(executorData.executorEndpoint.send(
           LaunchTask(new SerializableBuffer(serializedTask))), "rpcLaunch"
         )
+
+        Time.launchedTask(task.taskId)
       }
     }
 
