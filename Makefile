@@ -6,7 +6,13 @@ clean:
 build-core:
 	./elwin/core.sh
 
-push:
+build-base:
+	./elwin/base-build.sh
+
+push-base:
+	./elwin/base-push.sh $(BRANCH)
+
+push-core:
 	./elwin/docker.sh $(BRANCH)
 
 start-cluster:
