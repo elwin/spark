@@ -365,7 +365,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
     private def makeQueue(executorId: String): Unit = {
       val executorData = executorDataMap(executorId)
-      for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
+      for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue.filter(p => p.queue.nonEmpty)) {
 
         val taskResourceAssignments = HashMap[String, ResourceInformation]().toMap
         val taskQueue = Time.time(taskSet.queueOffer(executorId, taskResourceAssignments), "queueOffer")
