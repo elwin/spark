@@ -648,8 +648,8 @@ private[spark] class Executor(
         val initDuration = taskStartTimeNs - initStartTime
         val outDuration = finishTime - taskFinishNs
         val totalDuration = finishTime - initStartTime
-        logWarning(s"""elw4: {"type": "profiling_executor", "task_duration": $taskDuration, "init_duration": $initDuration, "out_duration": $outDuration, "total_duration": $totalDuration, "timestamp": $finishTime}""")
 
+        logWarning(s"""elw4: {"type": "profiling_executor", "task_duration": $taskDuration, "init_duration": $initDuration, "out_duration": $outDuration, "total_duration": $totalDuration, "task_id": $taskId, "partition_id": ${task.partitionId}, "stage_id": ${task.stageId}, "job_id": ${task.jobId.getOrElse(0)}, "timestamp": $finishTime}""")
 
         execBackend.statusUpdate(taskId, TaskState.FINISHED, serializedResult)
       } catch {
