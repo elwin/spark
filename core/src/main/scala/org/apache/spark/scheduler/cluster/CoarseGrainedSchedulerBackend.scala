@@ -370,7 +370,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       withLock { // todo lock needed?
 
         val executorData = executorDataMap(executorId)
-        for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue) {
+        for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue.filter(p => p.queue.nonEmpty)) {
           logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
           executorData.assignedQueue = Some(taskSet.name)
 
