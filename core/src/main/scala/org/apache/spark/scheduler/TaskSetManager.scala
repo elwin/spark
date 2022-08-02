@@ -476,7 +476,7 @@ private[spark] class TaskSetManager(
     taskAttempts(index) = info :: taskAttempts(index)
     // Serialize and return the task
     val serializedTask: ByteBuffer = try {
-      ser.serialize(task)
+      Time.time(ser.serialize(task), "serializeTask")
     } catch {
       // If the task cannot be serialized, then there's no point to re-attempt the task,
       // as it will always fail. So just abort the whole task-set.
