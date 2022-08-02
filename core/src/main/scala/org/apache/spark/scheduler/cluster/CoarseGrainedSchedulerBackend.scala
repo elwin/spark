@@ -201,13 +201,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       case ReviveOffers =>
         Time.time({
           for ((executorId, executor) <- executorDataMap) {
-            if (executor.assignedQueue.isEmpty) {
-              Time.time(makeQueue(executorId), "reviveMakeQueue")
-            }
-
-            if (executor.assignedQueue.isDefined && !executor.assignedTask) {
-              Time.time(makeOffers(executorId, executor.assignedQueue.get), "reviveMakeOffers")
-            }
+            makeQueueAndOffers(executorId, executor)
           }
         }, "rpcReviveOffers")
 
@@ -253,7 +247,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         executorDataMap.get(executorId).foreach { data =>
           data.freeCores = data.totalCores
         }
-        makeQueue(executorId)
+        Time.time(makeQueue(executorId), "launchedMakeQueue")
 
       case MiscellaneousProcessAdded(time: Long,
       processId: String, info: MiscellaneousProcessDetails) =>
@@ -261,6 +255,16 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       case e =>
         logError(s"Received unexpected message. ${e}")
+    }
+
+    private def makeQueueAndOffers(executorId: String, executor: ExecutorData): Unit = {
+      if (executor.assignedQueue.isEmpty) {
+        Time.time(makeQueue(executorId), "reviveMakeQueue")
+      }
+
+      if (executor.assignedQueue.isDefined && !executor.assignedTask) {
+        Time.time(makeOffers(executorId, executor.assignedQueue.get), "reviveMakeOffers")
+      }
     }
 
     override def receiveAndReply(context: RpcCallContext): PartialFunction[Any, Unit] = {
@@ -396,6 +400,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         Time.time(launchTask(taskDesc.get), "launchTask")
       } else {
         executorData.assignedQueue = None
+
+        makeQueueAndOffers(executorId, executorData)
       }
     }
 
