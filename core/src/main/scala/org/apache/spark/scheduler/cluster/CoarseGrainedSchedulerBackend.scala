@@ -36,7 +36,6 @@ import org.apache.spark.scheduler._
 import org.apache.spark.scheduler.cluster.CoarseGrainedClusterMessages._
 import org.apache.spark.scheduler.cluster.CoarseGrainedSchedulerBackend.ENDPOINT_NAME
 import org.apache.spark.util.{RpcUtils, SerializableBuffer, ThreadUtils, Utils}
-
 import org.apache.spark.Time
 
 /**
@@ -202,11 +201,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         }, "rpcStatusUpdate_" + state.toString)
 
       case ReviveOffers =>
-        Time.time({
-          for ((executorId, executor) <- executorDataMap) {
-            makeQueueAndOffer(executorId, executor)
-          }
-        }, "rpcReviveOffers")
+        Time.time({ reviveMyOffers() }, "rpcReviveOffers")
 
       case KillTask(taskId, executorId, interruptThread, reason) =>
         executorDataMap.get(executorId) match {
@@ -260,13 +255,25 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         logError(s"Received unexpected message. ${e}")
     }
 
-    private def makeQueueAndOffer(executorId: String, executor: ExecutorData): Unit = {
+    private def makeQueueAndOffer(executorId: String, executor: ExecutorData): Boolean = {
       if (executor.assignedQueue.isEmpty) {
-        Time.time(makeQueue(executorId), "makeQueue")
+        val assignedQueue = Time.time(makeQueue(executorId), "makeQueue")
+        if (!assignedQueue) return false
       }
 
       if (executor.assignedQueue.isDefined && !executor.assignedTask) {
         Time.time(makeOffers(executorId, executor.assignedQueue.get), "reviveMakeOffers")
+      }
+
+      true
+    }
+
+    def reviveMyOffers(): Unit = {
+      for ((executorId, executor) <- executorDataMap) {
+        val assignedQueue = makeQueueAndOffer(executorId, executor)
+        if (!assignedQueue) {
+          return
+        }
       }
     }
 
@@ -370,7 +377,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             "messages.")))
     }
 
-    private def makeQueue(executorId: String): Option[String] = {
+    private def makeQueue(executorId: String): Boolean = {
       withLock { // todo lock needed?
 
         val executorData = executorDataMap(executorId)
@@ -381,13 +388,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           scheduler.registerExecutor(executorId, executorData.executorHost)
           //          allocateExecutor(executorId, null) // todo Fill
 
-          return Some(taskSet.name)
+          return true
         }
 
         logInfo("no more task sets :(")
         executorData.assignedQueue = None
 
-        return None
+        return false
       }
     }
 
