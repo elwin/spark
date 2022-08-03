@@ -693,7 +693,7 @@ private[netty] class NettyRpcHandler(
 
   private def _internalReceive(client: TransportClient, message: ByteBuffer): RequestMessage = {
     val msg = internalReceive(client, message)
-    logInfo(s"""elw4: {"type": "packet", "size": ${message.position()}, "endpoint": "${msg.receiver.name}", "string: ${msg.toString}]"}""")
+    logInfo(s"""elw4: {"type": "packet", "size": ${message.position()}, "receiver": "${msg.receiver.name}", "string": "${msg.content}]"}""")
 
     msg
   }
