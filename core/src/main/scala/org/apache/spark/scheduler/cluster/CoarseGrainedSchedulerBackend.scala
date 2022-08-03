@@ -199,11 +199,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       // todo: release resources
 
       case ReviveOffers =>
-        Time.time({
-          for ((executorId, executor) <- executorDataMap) {
-            makeQueueAndOffers(executorId, executor)
-          }
-        }, "rpcReviveOffers")
+        Time.time({ reviveMyOffers() }, "rpcReviveOffers")
 
       case KillTask(taskId, executorId, interruptThread, reason) =>
         executorDataMap.get(executorId) match {
@@ -257,13 +253,27 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         logError(s"Received unexpected message. ${e}")
     }
 
-    private def makeQueueAndOffers(executorId: String, executor: ExecutorData): Unit = {
+    private def makeQueueAndOffer(executorId: String, executor: ExecutorData): Boolean = {
       if (executor.assignedQueue.isEmpty) {
-        Time.time(makeQueue(executorId), "reviveMakeQueue")
+        val assignedQueue = Time.time(makeQueue(executorId), "reviveMakeQueue")
+        if (!assignedQueue) {
+          return false
+        }
       }
 
       if (executor.assignedQueue.isDefined && !executor.assignedTask) {
         Time.time(makeOffers(executorId, executor.assignedQueue.get), "reviveMakeOffers")
+      }
+
+      true
+    }
+
+    def reviveMyOffers(): Unit = {
+      for ((executorId, executor) <- executorDataMap) {
+        val assignedQueue = makeQueueAndOffer(executorId, executor)
+        if (!assignedQueue) {
+          return
+        }
       }
     }
 
@@ -367,7 +377,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             "messages.")))
     }
 
-    private def makeQueue(executorId: String): Unit = {
+    private def makeQueue(executorId: String): Boolean = {
       val executorData = executorDataMap(executorId)
       for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue.filter(p => p.queue.nonEmpty)) {
 
@@ -376,11 +386,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
         Time.time(launchTaskQueue(taskQueue), "launchTaskQueue")
 
-        return
+        return true
       }
 
       logInfo("no more task sets :(")
       executorData.assignedQueue = None
+
+      return false
     }
 
     // Make fake resource offers on just one executor
@@ -401,7 +413,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       } else {
         executorData.assignedQueue = None
 
-        makeQueueAndOffers(executorId, executorData)
+        makeQueueAndOffer(executorId, executorData)
       }
     }
 
