@@ -346,6 +346,7 @@ private[spark] class Executor(
   }
 
   var lastStarted: Long = 0
+  var lastStageID: Int = 0
 
   /** Returns the total amount of time this JVM process has spent in garbage collection. */
   private def computeTotalGcTime(): Long = {
@@ -648,12 +649,14 @@ private[spark] class Executor(
 
         val finishTime = System.nanoTime()
         lastStarted = finishTime
+        val newStage = if (lastStageID != task.stageId) "true" else "false"
+        lastStageID = task.stageId
         val taskDuration = taskFinishNs - taskStartTimeNs
         val initDuration = taskStartTimeNs - initStartTime
         val outDuration = finishTime - taskFinishNs
         val totalDuration = finishTime - initStartTime
 
-        logWarning(s"""elw4: {"type": "profiling_executor", "task_duration": $taskDuration, "init_duration": $initDuration, "out_duration": $outDuration, "total_duration": $totalDuration, "gap_duration": $previousGap, "task_id": $taskId, "partition_id": ${task.partitionId}, "stage_id": ${task.stageId}, "job_id": ${task.jobId.getOrElse(0)}, "executor_id": "${taskDescription.executorId}", "timestamp": $finishTime}""")
+        logWarning(s"""elw4: {"type": "profiling_executor", "task_duration": $taskDuration, "init_duration": $initDuration, "out_duration": $outDuration, "total_duration": $totalDuration, "gap_duration": $previousGap, "task_id": $taskId, "partition_id": ${task.partitionId}, "stage_id": ${task.stageId}, "new_stage": $newStage, "job_id": ${task.jobId.getOrElse(0)}, "executor_id": "${taskDescription.executorId}", "timestamp": $finishTime}""")
 
         execBackend.statusUpdate(taskId, TaskState.FINISHED, serializedResult)
       } catch {
