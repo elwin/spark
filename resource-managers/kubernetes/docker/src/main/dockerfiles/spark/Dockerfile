@@ -20,6 +20,9 @@ FROM openjdk:${java_image_tag}
 
 ARG spark_uid=185
 
+# Required to avoid Kerberos interactive frontend
+ARG DEBIAN_FRONTEND=noninteractive
+
 # Before building the docker image, first build and make a Spark distribution following
 # the instructions in http://spark.apache.org/docs/latest/building-spark.html.
 # If this docker file is being used in the context of building your images from a Spark
