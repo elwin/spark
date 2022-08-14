@@ -166,10 +166,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     override def receive: PartialFunction[Any, Unit] = {
-      //      case RequestTaskQueue(executorId) => makeQueue(executorId)
-
-
-      case StatusUpdate(executorId, taskId, state, taskQueue, data, resources) =>
+      case StatusUpdate(executorId, taskId, state, data, resources) =>
         Time.time({
           if (state.equals(TaskState.FINISHED)) {
             Time.finishedTask(taskId)
@@ -192,8 +189,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
               Time.time({
                 executorInfo.assignedTask = false
                 releaseExecutor(executorId, resources)
-                if (executorInfo.assignedQueue.isDefined && !executorInfo.assignedTask) {
-                  Time.time(makeOffers(executorId, executorInfo.assignedQueue.get), "makeOffers")
+                if (executorInfo.assignedTaskSet.isDefined && !executorInfo.assignedTask) {
+                  Time.time(makeOffers(executorId, executorInfo.assignedTaskSet.get), "makeOffers")
                 }
               }, "taskIsFinished")
             }
@@ -245,7 +242,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         executorDataMap.get(executorId).foreach { data =>
           data.freeCores = data.totalCores
         }
-        makeQueue(executorId)
+        assignTaskSet(executorId)
 
       case MiscellaneousProcessAdded(time: Long,
       processId: String, info: MiscellaneousProcessDetails) =>
@@ -256,13 +253,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     }
 
     private def makeQueueAndOffer(executorId: String, executor: ExecutorData): Boolean = {
-      if (executor.assignedQueue.isEmpty) {
-        val assignedQueue = Time.time(makeQueue(executorId), "makeQueue")
+      if (executor.assignedTaskSet.isEmpty) {
+        val assignedQueue = Time.time(assignTaskSet(executorId), "makeQueue")
         if (!assignedQueue) return false
       }
 
-      if (executor.assignedQueue.isDefined && !executor.assignedTask) {
-        Time.time(makeOffers(executorId, executor.assignedQueue.get), "reviveMakeOffers")
+      if (executor.assignedTaskSet.isDefined && !executor.assignedTask) {
+        Time.time(makeOffers(executorId, executor.assignedTaskSet.get), "reviveMakeOffers")
       }
 
       true
@@ -377,13 +374,13 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             "messages.")))
     }
 
-    private def makeQueue(executorId: String): Boolean = {
+    private def assignTaskSet(executorId: String): Boolean = {
       withLock { // todo lock needed?
 
         val executorData = executorDataMap(executorId)
         for (taskSet <- scheduler.rootPool.getSortedTaskSetQueue.filter(p => p.queue.nonEmpty)) {
           logInfo(s"setting task queue ${taskSet.name} on executor $executorId")
-          executorData.assignedQueue = Some(taskSet.name)
+          executorData.assignedTaskSet = Some(taskSet)
 
           scheduler.registerExecutor(executorId, executorData.executorHost)
           //          allocateExecutor(executorId, null) // todo Fill
@@ -392,14 +389,14 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         }
 
         logInfo("no more task sets :(")
-        executorData.assignedQueue = None
+        executorData.assignedTaskSet = None
 
         return false
       }
     }
 
     // Make fake resource offers on just one executor
-    private def makeOffers(executorId: String, taskQueue: String): Unit = {
+    private def makeOffers(executorId: String, taskQueue: TaskSetManager): Unit = {
       // Make sure no executor is killed while some task is launching on it
       val executorData = Time.time(executorDataMap(executorId), "executorLookup")
 
@@ -423,7 +420,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       if (taskDesc.isDefined) {
         Time.time(launchTask(taskDesc.get), "launchTask")
       } else {
-        executorData.assignedQueue = None
+        executorData.assignedTaskSet = None
         //        releaseExecutor(executorId, null) // TODO add actual resources
 
         makeQueueAndOffer(executorId, executorData)
