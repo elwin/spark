@@ -510,28 +510,27 @@ private[spark] class TaskSchedulerImpl(
     }
   }
 
-  def nextOffer(executorId: String, host: String, taskQueue: String): Option[TaskDescription] = synchronized {
-
-    val taskSetManager = rootPool.getSchedulableByName(taskQueue).asInstanceOf[TaskSetManager]
-    if (taskSetManager == null) {
+  def nextOffer(executorId: String, host: String, count: Int, stage: TaskSetManager):
+    Seq[TaskDescription] = synchronized {
+    if (stage == null) {
       logInfo("no taskSetManager defined")
-      return None
+      return Seq.empty
     }
 
-    val (taskDesc, _, _) = taskSetManager.resourceOfferLight(
+    val tasks = (0 until count).map(_ => stage.resourceOfferLight(
       execId = executorId,
       host = host,
       maxLocality = TaskLocality.ANY,
-    )
+    )._1).filter(_.isDefined).map(_.get)
 
-    if (taskDesc.isDefined) {
-      addRunningTask(taskDesc.get.taskId, taskDesc.get.executorId, taskSetManager)
-      return taskDesc
+    if (tasks.isEmpty) {
+      logInfo("no task found :(")
+      return Seq.empty
     }
 
-    logInfo("no task found :(")
+    tasks.foreach(x => addRunningTask(x.taskId, x.executorId, stage))
 
-    return None
+    tasks
   }
 
   /**

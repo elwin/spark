@@ -379,9 +379,9 @@ This file is divided into 3 sections:
   <check level="error" class="org.scalastyle.scalariform.NoCloneChecker" enabled="false"></check>
 
   <!-- Doesn't seem super big deal here ... -->
-  <check level="error" class="org.scalastyle.file.FileLengthChecker" enabled="false">
-    <parameters><parameter name="maxFileLength">800></parameter></parameters>
-  </check>
+<!--  <check level="error" class="org.scalastyle.file.FileLengthChecker" enabled="false">-->
+<!--    <parameters><parameter name="maxFileLength">800></parameter></parameters>-->
+<!--  </check>-->
 
   <!-- Doesn't seem super big deal here ... -->
   <check level="error" class="org.scalastyle.scalariform.NumberOfTypesChecker" enabled="false">

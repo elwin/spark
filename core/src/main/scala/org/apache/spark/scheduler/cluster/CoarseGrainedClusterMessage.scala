@@ -20,7 +20,7 @@ package org.apache.spark.scheduler.cluster
 import org.apache.spark.Partition
 
 import java.nio.ByteBuffer
-import org.apache.spark.TaskState.{FINISHED, RUNNING, TaskState}
+import org.apache.spark.TaskState.TaskState
 import org.apache.spark.resource.{ResourceInformation, ResourceProfile}
 import org.apache.spark.rpc.RpcEndpointRef
 import org.apache.spark.scheduler.{ExecutorLossReason, MiscellaneousProcessDetails}
@@ -69,10 +69,6 @@ private[spark] object CoarseGrainedClusterMessages {
     extends CoarseGrainedClusterMessage
 
   // Executors to driver
-  case class RequestTaskQueue(executorId: String) extends CoarseGrainedClusterMessage
-
-  case class RequestTask(executorId: String, taskQueue: String) extends CoarseGrainedClusterMessage
-
   case class RegisterExecutor(
                                executorId: String,
                                executorRef: RpcEndpointRef,
@@ -90,26 +86,15 @@ private[spark] object CoarseGrainedClusterMessages {
                            executorId: String,
                            taskId: Long,
                            state: TaskState,
-                           taskQueue: Option[String],
                            data: SerializableBuffer,
                            resources: Map[String, ResourceInformation] = Map.empty)
-    extends CoarseGrainedClusterMessage {
-    override def toString: String = {
-      val str = state match {
-        case RUNNING => "RUNNING"
-        case FINISHED => "FINISHED"
-        case default => default.toString
-      }
-
-      s"StatusUpdate($str)"
-    }
-  }
+    extends CoarseGrainedClusterMessage
 
   object StatusUpdate {
     /** Alternate factory method that takes a ByteBuffer directly for the data field */
-    def apply(executorId: String, taskId: Long, state: TaskState, taskQueue: Option[String],
-              data: ByteBuffer, resources: Map[String, ResourceInformation]): StatusUpdate = {
-      StatusUpdate(executorId, taskId, state, taskQueue, new SerializableBuffer(data), resources)
+    def apply(executorId: String, taskId: Long, state: TaskState, data: ByteBuffer,
+              resources: Map[String, ResourceInformation]): StatusUpdate = {
+      StatusUpdate(executorId, taskId, state, new SerializableBuffer(data), resources)
     }
   }
 

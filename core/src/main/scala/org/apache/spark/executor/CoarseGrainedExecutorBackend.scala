@@ -192,13 +192,13 @@ private[spark] class CoarseGrainedExecutorBackend(
           addedArchives = taskQueue.addedArchives,
           properties = taskQueue.properties,
           resources = taskQueue.resources,
-          serializedTask = taskQueue.serializedTask,
+          serializedTask = taskQueue.serializedTask.duplicate(),
           partition = partition,
         )
 
-        // serializedTask is shared amongst all executors and needs to be reset
-        // after each deserialization. Not thread safe.
-        taskDesc.serializedTask.rewind()
+//        // serializedTask is shared amongst all executors and needs to be reset
+//        // after each deserialization. Not thread safe.
+//        taskDesc.serializedTask.rewind()
 
 
         logInfo(s"Got assigned task ${taskDesc.taskId} with partition ${partitionId}")
@@ -301,8 +301,7 @@ private[spark] class CoarseGrainedExecutorBackend(
     }
 
     val resources = taskResources.getOrElse(name.orNull, Map.empty[String, ResourceInformation])
-    val queue = if (currentTaskQueue.isDefined) Some(currentTaskQueue.get.name) else None
-    val msg = StatusUpdate(executorId, taskId, state, queue, data, resources)
+    val msg = StatusUpdate(executorId, taskId, state, data, resources)
     if (TaskState.isFinished(state)) {
       taskResources.remove(currentTaskQueue.get.name)
     }
