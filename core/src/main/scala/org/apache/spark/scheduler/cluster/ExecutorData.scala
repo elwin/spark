@@ -44,6 +44,6 @@ private[cluster] class ExecutorData(
                                      override val resourceProfileId: Int,
                                      val registrationTs: Long,
                                      var assignedTaskSet: Option[TaskSetManager] = None,
-                                     var assignedTask: Boolean = false,
+                                     var assignedTask: Int = 0,
                                    ) extends ExecutorInfo(executorHost, totalCores, logUrlMap, attributes,
   resourcesInfo, resourceProfileId)

@@ -187,9 +187,9 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             if (TaskState.isFinished(state)) {
 
               Time.time({
-                executorInfo.assignedTask = false
+                executorInfo.assignedTask -= 1
                 releaseExecutor(executorId, resources)
-                if (executorInfo.assignedTaskSet.isDefined && !executorInfo.assignedTask) {
+                if (executorInfo.assignedTaskSet.isDefined && executorInfo.assignedTask == 0) {
                   Time.time(makeOffers(executorId, executorInfo.assignedTaskSet.get), "makeOffers")
                 }
               }, "taskIsFinished")
@@ -258,7 +258,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         if (!assignedQueue) return false
       }
 
-      if (executor.assignedTaskSet.isDefined && !executor.assignedTask) {
+      if (executor.assignedTaskSet.isDefined && executor.assignedTask == 0) {
         Time.time(makeOffers(executorId, executor.assignedTaskSet.get), "reviveMakeOffers")
       }
 
@@ -417,8 +417,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         Time.time(scheduler.nextOffer(offer, taskQueue), "nextOffer")
       }, "locked")
 
-      if (taskDesc.isDefined) {
-        Time.time(launchTask(taskDesc.get), "launchTask")
+      if (taskDesc.nonEmpty) {
+        Time.time(taskDesc.foreach(launchTask), "launchTask")
       } else {
         executorData.assignedTaskSet = None
         //        releaseExecutor(executorId, null) // TODO add actual resources
@@ -472,7 +472,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       }
       else {
         val executorData = executorDataMap(task.executorId)
-        executorData.assignedTask = true
+        executorData.assignedTask += 1
         // Do resources allocation here. The allocated resources will get released after the task
         // finishes.
         allocateExecutor(task.executorId, task.resources)
