@@ -188,8 +188,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
               releaseExecutor(executorId, Map.empty)
 
               Time.time({
-                executorInfo.assignedTask -= 1
-                if (executorInfo.assignedTaskSet.isDefined && executorInfo.assignedTask == 0) {
+                if (executorInfo.assignedTaskSet.isDefined && executorInfo.freeCores > 0) {
                   Time.time(makeOffers(executorId, executorInfo.assignedTaskSet.get), "makeOffers")
                 }
               }, "taskIsFinished")
@@ -260,7 +259,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         if (!assignedQueue) return false
       }
 
-      if (executor.assignedTaskSet.isDefined && executor.assignedTask == 0) {
+      if (executor.assignedTaskSet.isDefined) {
         Time.time(makeOffers(executorId, executor.assignedTaskSet.get), "reviveMakeOffers")
       }
 
@@ -413,9 +412,10 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
 
       if (taskDesc.nonEmpty) {
         Time.time(taskDesc.foreach(launchTask), "launchTask")
-      } else if (executorData.assignedTask == 0) {
-        executorData.assignedTaskSet = None
+      } else if (executorData.freeCores == executorData.totalCores) {
+        // there's no more tasks on the executor, we can remove the queue
 
+        executorData.assignedTaskSet = None
         makeQueueAndOffer(executorId, executorData)
       }
     }
@@ -475,7 +475,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     private def launchTask(task: TaskDescription): Unit = {
       val executorData = executorDataMap(task.executorId)
       allocateExecutor(task.executorId, Map.empty)
-      executorData.assignedTask += 1
 
       logDebug(s"Launching task ${task.taskId} with partition ${task.partitionId} " +
         s"on executor id: ${task.executorId} hostname: " +
