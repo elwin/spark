@@ -187,9 +187,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
             if (TaskState.isFinished(state)) {
 
               Time.time({
-                executorInfo.assignedTask -= 1
                 releaseExecutor(executorId, resources)
-                if (executorInfo.assignedTaskSet.isDefined && executorInfo.assignedTask == 0) {
+                if (executorInfo.assignedTaskSet.isDefined) {
                   Time.time(makeOffers(executorId, executorInfo.assignedTaskSet.get), "makeOffers")
                 }
               }, "taskIsFinished")
@@ -258,7 +257,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
         if (!assignedQueue) return false
       }
 
-      if (executor.assignedTaskSet.isDefined && executor.assignedTask == 0) {
+      if (executor.assignedTaskSet.isDefined   && executor.freeCores > 0) {
         Time.time(makeOffers(executorId, executor.assignedTaskSet.get), "reviveMakeOffers")
       }
 
@@ -472,7 +471,6 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       }
       else {
         val executorData = executorDataMap(task.executorId)
-        executorData.assignedTask += 1
         // Do resources allocation here. The allocated resources will get released after the task
         // finishes.
         allocateExecutor(task.executorId, task.resources)
