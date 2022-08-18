@@ -443,7 +443,7 @@ private[spark] class Executor(
 
     override def run(): Unit = {
       val initStartTime = System.nanoTime()
-      val previousGap = if (lastStarted == 0) 0 else System.nanoTime() - lastStarted
+      val previousGap = if (lastStarted == 0) 0 else taskDescription.launchedTask - lastStarted
 
       setMDCForTask(taskName, mdcProperties)
       threadId = Thread.currentThread.getId
@@ -659,8 +659,9 @@ private[spark] class Executor(
         val initDuration = taskStartTimeNs - initStartTime
         val outDuration = finishTime - taskFinishNs
         val totalDuration = finishTime - initStartTime
+        val launchDuration = initStartTime - taskDescription.launchedTask
 
-        logWarning(s"""elw4: {"type": "profiling_executor", "task_duration": $taskDuration, "init_duration": $initDuration, "out_duration": $outDuration, "total_duration": $totalDuration, "gap_duration": $previousGap, "task_id": $taskId, "partition_id": ${task.partitionId}, "stage_id": ${task.stageId}, "new_stage": $newStage, "job_id": ${task.jobId.getOrElse(0)}, "executor_id": "${taskDescription.executorId}", "timestamp": $finishTime}""")
+        logWarning(s"""elw4: {"type": "profiling_executor", "task_duration": $taskDuration, "launch_duration": $launchDuration, "init_duration": $initDuration, "out_duration": $outDuration, "total_duration": $totalDuration, "gap_duration": $previousGap, "task_id": $taskId, "partition_id": ${task.partitionId}, "stage_id": ${task.stageId}, "new_stage": $newStage, "job_id": ${task.jobId.getOrElse(0)}, "executor_id": "${taskDescription.executorId}", "timestamp": $finishTime}""")
 
         execBackend.statusUpdate(taskId, TaskState.FINISHED, serializedResult)
       } catch {

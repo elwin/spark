@@ -559,6 +559,7 @@ private[spark] class TaskSetManager(
       resources = null,
       serializedTask = null,
       partition = task.partition,
+      0,
     )
   }
 
@@ -624,6 +625,7 @@ private[spark] class TaskSetManager(
       taskResourceAssignments,
       serializedTask,
       null,
+      0,
     )
   }
 

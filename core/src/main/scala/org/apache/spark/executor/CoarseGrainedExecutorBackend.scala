@@ -173,6 +173,7 @@ private[spark] class CoarseGrainedExecutorBackend(
       }
 
     case LaunchTask(taskId, attemptNumber, executorId, name, index, partitionId, partition) =>
+      val now = System.nanoTime()
       if (executor == null) {
         exitExecutor(1, "Received LaunchTask command but executor was null")
       } else if (currentTaskQueue.isEmpty) {
@@ -194,6 +195,7 @@ private[spark] class CoarseGrainedExecutorBackend(
           resources = taskQueue.resources,
           serializedTask = taskQueue.serializedTask.duplicate(),
           partition = partition,
+          launchedTask = now,
         )
 
 //        // serializedTask is shared amongst all executors and needs to be reset
