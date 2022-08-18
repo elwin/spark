@@ -548,7 +548,9 @@ private[spark] class TaskSetManager(
       addedArchives,
       task.localProperties,
       taskResourceAssignments,
-      serializedTask)
+      serializedTask,
+      0,
+    )
   }
 
   def taskName(tid: Long): String = {

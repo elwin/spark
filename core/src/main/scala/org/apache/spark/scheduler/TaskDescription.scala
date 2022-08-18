@@ -58,7 +58,9 @@ private[spark] class TaskDescription(
                                       val addedArchives: Map[String, Long],
                                       val properties: Properties,
                                       val resources: immutable.Map[String, ResourceInformation],
-                                      val serializedTask: ByteBuffer) {
+                                      val serializedTask: ByteBuffer,
+                                      val launchedTask: Long,
+                                    ) {
 
   override def toString: String = s"TaskDescription($name)"
 }
@@ -156,7 +158,7 @@ private[spark] object TaskDescription {
     map.toMap
   }
 
-  def decode(byteBuffer: ByteBuffer): TaskDescription = {
+  def decode(byteBuffer: ByteBuffer, ts: Long): TaskDescription = {
     val dataIn = new DataInputStream(new ByteBufferInputStream(byteBuffer))
     val taskId = dataIn.readLong()
     val attemptNumber = dataIn.readInt()
@@ -192,6 +194,6 @@ private[spark] object TaskDescription {
     val serializedTask = byteBuffer.slice()
 
     new TaskDescription(taskId, attemptNumber, executorId, name, index, partitionId, taskFiles,
-      taskJars, taskArchives, properties, resources, serializedTask)
+      taskJars, taskArchives, properties, resources, serializedTask, ts)
   }
 }

@@ -443,7 +443,7 @@ private[spark] class Executor(
 
     override def run(): Unit = {
       val initStartTime = System.nanoTime()
-      val previousGap = if (lastStarted == 0) 0 else System.nanoTime() - lastStarted
+      val previousGap = if (lastStarted == 0) 0 else taskDescription.launchedTask - lastStarted
 
       setMDCForTask(taskName, mdcProperties)
       threadId = Thread.currentThread.getId
@@ -458,8 +458,7 @@ private[spark] class Executor(
       val ser = env.closureSerializer.newInstance()
       logInfo(s"Running $taskName")
       execBackend.statusUpdate(taskId, TaskState.RUNNING, EMPTY_BYTE_BUFFER)
-      var taskStartTimeNs: Long = 0
-      var taskStartCpu: Long = 0
+      var taskStartCpu,  taskStartTimeNs, taskFinishNs: Long = 0
       startGCTime = computeTotalGcTime()
       var taskStarted: Boolean = false
 
@@ -499,18 +498,22 @@ private[spark] class Executor(
         taskStarted = true
 
         // Run the actual task and measure its runtime.
-        taskStartTimeNs = System.nanoTime()
         taskStartCpu = if (threadMXBean.isCurrentThreadCpuTimeSupported) {
           threadMXBean.getCurrentThreadCpuTime
         } else 0L
         var threwException = true
         val value = Utils.tryWithSafeFinally {
+
+          taskStartTimeNs = System.nanoTime()
           val res = task.run(
             taskAttemptId = taskId,
             attemptNumber = taskDescription.attemptNumber,
             metricsSystem = env.metricsSystem,
             resources = taskDescription.resources,
             plugins = plugins)
+          taskFinishNs = System.nanoTime()
+
+
           threwException = false
           res
         } {
@@ -545,7 +548,6 @@ private[spark] class Executor(
             s"unrecoverable fetch failures!  Most likely this means user code is incorrectly " +
             s"swallowing Spark's internal ${classOf[FetchFailedException]}", fetchFailure)
         }
-        val taskFinishNs = System.nanoTime()
         val taskFinishCpu = if (threadMXBean.isCurrentThreadCpuTimeSupported) {
           threadMXBean.getCurrentThreadCpuTime
         } else 0L
@@ -655,8 +657,9 @@ private[spark] class Executor(
         val initDuration = taskStartTimeNs - initStartTime
         val outDuration = finishTime - taskFinishNs
         val totalDuration = finishTime - initStartTime
+        val launchDuration = initStartTime - taskDescription.launchedTask
 
-        logWarning(s"""elw4: {"type": "profiling_executor", "task_duration": $taskDuration, "init_duration": $initDuration, "out_duration": $outDuration, "total_duration": $totalDuration, "gap_duration": $previousGap, "task_id": $taskId, "partition_id": ${task.partitionId}, "stage_id": ${task.stageId}, "new_stage": $newStage, "job_id": ${task.jobId.getOrElse(0)}, "executor_id": "${taskDescription.executorId}", "timestamp": $finishTime}""")
+        logWarning(s"""elw4: {"type": "profiling_executor", "task_duration": $taskDuration, "launch_duration": $launchDuration, "init_duration": $initDuration, "out_duration": $outDuration, "total_duration": $totalDuration, "gap_duration": $previousGap, "task_id": $taskId, "partition_id": ${task.partitionId}, "stage_id": ${task.stageId}, "new_stage": $newStage, "job_id": ${task.jobId.getOrElse(0)}, "executor_id": "${taskDescription.executorId}", "timestamp": $finishTime}""")
 
         execBackend.statusUpdate(taskId, TaskState.FINISHED, serializedResult)
       } catch {

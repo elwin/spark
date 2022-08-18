@@ -171,10 +171,11 @@ private[spark] class CoarseGrainedExecutorBackend(
       }
 
     case LaunchTask(data) =>
+      val now = System.nanoTime()
       if (executor == null) {
         exitExecutor(1, "Received LaunchTask command but executor was null")
       } else {
-        val taskDesc = TaskDescription.decode(data.value)
+        val taskDesc = TaskDescription.decode(data.value, now)
         logInfo("Got assigned task " + taskDesc.taskId)
         taskResources(taskDesc.taskId) = taskDesc.resources
         executor.launchTask(this, taskDesc)
