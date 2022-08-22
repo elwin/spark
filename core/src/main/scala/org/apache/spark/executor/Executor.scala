@@ -40,7 +40,7 @@ import java.lang.management.ManagementFactory
 import java.net.{URI, URL}
 import java.nio.ByteBuffer
 import java.util.concurrent._
-import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
 import java.util.{Locale, Properties}
 import javax.annotation.concurrent.GuardedBy
 import javax.ws.rs.core.UriBuilder
@@ -345,8 +345,8 @@ private[spark] class Executor(
     }
   }
 
-  var lastStarted: Long = 0
-  var lastStageID: Int = 0
+  var lastFinished = new ConcurrentLinkedQueue[Long]()
+  var lastStageID = new AtomicInteger()
 
   /** Returns the total amount of time this JVM process has spent in garbage collection. */
   private def computeTotalGcTime(): Long = {
@@ -443,7 +443,8 @@ private[spark] class Executor(
 
     override def run(): Unit = {
       val initStartTime = System.nanoTime()
-      val previousGap = if (lastStarted == 0) 0 else taskDescription.launchedTask - lastStarted
+      val out = lastFinished.poll()
+      val previousGap = if (out == 0) 0 else taskDescription.launchedTask - out
 
       setMDCForTask(taskName, mdcProperties)
       threadId = Thread.currentThread.getId
@@ -650,9 +651,8 @@ private[spark] class Executor(
         plugins.foreach(_.onTaskSucceeded())
 
         val finishTime = System.nanoTime()
-        lastStarted = finishTime
-        val newStage = if (lastStageID != task.stageId) "true" else "false"
-        lastStageID = task.stageId
+        lastFinished.add(finishTime)
+        val newStage = if (lastStageID.getAndSet(task.stageId) != task.stageId) "true" else "false"
         val taskDuration = taskFinishNs - taskStartTimeNs
         val initDuration = taskStartTimeNs - initStartTime
         val outDuration = finishTime - taskFinishNs
