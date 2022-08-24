@@ -102,4 +102,4 @@ case "$1" in
 esac
 
 # Execute the container CMD under tini for better hygiene
-exec /usr/bin/tini -s -- "${CMD[@]}" 2>&1 | tee >(logger -n "${LOGGER_HOST}" -P 3066 -T --tag "${TEST_NAME}")
+exec /usr/bin/tini -s -- "${CMD[@]}" 2>&1 | tee >(logger -n "${LOGGER_HOST}" -P "${LOGGER_PORT}" -T --tag "${TEST_NAME}")
