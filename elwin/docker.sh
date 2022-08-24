@@ -6,15 +6,18 @@ if [ $# -eq 0 ]; then
 fi
 
 REPO=ghcr.io/elwin/spark
+REPO_IBM=us.icr.io/elwin/spark
 TAG=$1
 
 
 IMAGE_NAME="${REPO}:${TAG}"
+IMAGE_NAME_IBM="${REPO_IBM}:${TAG}"
 
 echo "Pushing to \"${IMAGE_NAME}\""
 
-docker build -f elwin/Dockerfile -t "${IMAGE_NAME}" elwin
+docker build -f elwin/Dockerfile -t "${IMAGE_NAME}" -t "${IMAGE_NAME_IBM}" elwin
 docker push "${IMAGE_NAME}"
+docker push "${IMAGE_NAME_IBM}"
 
 echo "Pushing to zac"
 
