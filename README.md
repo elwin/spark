@@ -1,4 +1,9 @@
-# Apache Spark
+> This repository contains the changes required for the analysis and optimizations performed for the thesis
+> _Efficient Scale-out Execution for Fine-grained Data-Parallelism_.
+> The different versions are under the branches `vanilla`, `queue` and `lightrpc`.
+> For instructions how to build the project, please refer to the official Spark documentation.
+# 
+Apache Spark
 
 Spark is a unified analytics engine for large-scale data processing. It provides
 high-level APIs in Scala, Java, Python, and R, and an optimized engine that
